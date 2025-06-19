@@ -1,0 +1,179 @@
+syntax = "proto3";
+
+package bidding;
+
+option go_package = "github.com/baskint/bidding-analysis/api/proto";
+
+import "google/protobuf/timestamp.proto";
+
+// BiddingService handles real-time bid processing and predictions
+service BiddingService {
+  // ProcessBid handles incoming bid requests and returns optimal bid price
+  rpc ProcessBid(BidRequest) returns (BidResponse);
+  
+  // GetBidHistory returns historical bid data for analysis
+  rpc GetBidHistory(BidHistoryRequest) returns (BidHistoryResponse);
+  
+  // StreamBidUpdates provides real-time bid updates
+  rpc StreamBidUpdates(StreamRequest) returns (stream BidUpdate);
+}
+
+// AnalyticsService handles campaign analytics and reporting
+service AnalyticsService {
+  // GetCampaignStats returns campaign performance metrics
+  rpc GetCampaignStats(CampaignStatsRequest) returns (CampaignStatsResponse);
+  
+  // GetFraudAlerts returns detected fraud patterns
+  rpc GetFraudAlerts(FraudAlertsRequest) returns (FraudAlertsResponse);
+  
+  // GetPredictionAccuracy returns ML model performance metrics
+  rpc GetPredictionAccuracy(AccuracyRequest) returns (AccuracyResponse);
+}
+
+// BidRequest represents an incoming bid request
+message BidRequest {
+  string campaign_id = 1;
+  string user_id = 2;
+  UserSegment user_segment = 3;
+  GeoLocation geo_location = 4;
+  DeviceInfo device_info = 5;
+  google.protobuf.Timestamp timestamp = 6;
+  double floor_price = 7;
+  repeated string keywords = 8;
+}
+
+// BidResponse contains the optimal bid price and confidence
+message BidResponse {
+  double bid_price = 1;
+  double confidence = 2;
+  string strategy = 3;
+  bool fraud_risk = 4;
+  string prediction_id = 5;
+}
+
+// UserSegment represents audience segmentation data
+message UserSegment {
+  string segment_id = 1;
+  string category = 2;
+  double engagement_score = 3;
+  double conversion_probability = 4;
+}
+
+// GeoLocation represents geographical data
+message GeoLocation {
+  string country = 1;
+  string region = 2;
+  string city = 3;
+  double latitude = 4;
+  double longitude = 5;
+}
+
+// DeviceInfo represents device and browser information
+message DeviceInfo {
+  string device_type = 1;  // mobile, desktop, tablet
+  string os = 2;
+  string browser = 3;
+  bool is_mobile = 4;
+}
+
+// BidHistoryRequest for querying historical bid data
+message BidHistoryRequest {
+  string campaign_id = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+// BidHistoryResponse contains historical bid data
+message BidHistoryResponse {
+  repeated BidRecord bids = 1;
+  int32 total_count = 2;
+}
+
+// BidRecord represents a single bid record
+message BidRecord {
+  string bid_id = 1;
+  string campaign_id = 2;
+  double bid_price = 3;
+  double win_price = 4;
+  bool won = 5;
+  bool converted = 6;
+  google.protobuf.Timestamp timestamp = 7;
+  UserSegment user_segment = 8;
+}
+
+// StreamRequest for real-time bid updates
+message StreamRequest {
+  repeated string campaign_ids = 1;
+}
+
+// BidUpdate for streaming real-time updates
+message BidUpdate {
+  string campaign_id = 1;
+  double current_bid_rate = 2;
+  double win_rate = 3;
+  double conversion_rate = 4;
+  double spend_rate = 5;
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+// CampaignStatsRequest for campaign analytics
+message CampaignStatsRequest {
+  string campaign_id = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+}
+
+// CampaignStatsResponse contains campaign performance metrics
+message CampaignStatsResponse {
+  string campaign_id = 1;
+  int64 total_bids = 2;
+  int64 won_bids = 3;
+  int64 conversions = 4;
+  double total_spend = 5;
+  double average_bid = 6;
+  double win_rate = 7;
+  double conversion_rate = 8;
+  double cost_per_conversion = 9;
+  double return_on_ad_spend = 10;
+}
+
+// FraudAlertsRequest for fraud detection queries
+message FraudAlertsRequest {
+  google.protobuf.Timestamp start_time = 1;
+  google.protobuf.Timestamp end_time = 2;
+  int32 severity_threshold = 3;
+}
+
+// FraudAlertsResponse contains detected fraud patterns
+message FraudAlertsResponse {
+  repeated FraudAlert alerts = 1;
+}
+
+// FraudAlert represents a detected fraud pattern
+message FraudAlert {
+  string alert_id = 1;
+  string campaign_id = 2;
+  string alert_type = 3;  // click_fraud, impression_fraud, conversion_fraud
+  int32 severity = 4;     // 1-10 scale
+  string description = 5;
+  google.protobuf.Timestamp detected_at = 6;
+  repeated string affected_user_ids = 7;
+}
+
+// AccuracyRequest for ML model performance
+message AccuracyRequest {
+  google.protobuf.Timestamp start_time = 1;
+  google.protobuf.Timestamp end_time = 2;
+  string model_version = 3;
+}
+
+// AccuracyResponse contains model performance metrics
+message AccuracyResponse {
+  double prediction_accuracy = 1;
+  double mean_absolute_error = 2;
+  double root_mean_square_error = 3;
+  int64 total_predictions = 4;
+  string model_version = 5;
+}
