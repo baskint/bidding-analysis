@@ -25,6 +25,10 @@ migrate-up:
 migrate-down:
 	migrate -path migrations -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)" down
 
+# Generate test data
+generate-data:
+	go run cmd/generate-data/main.go
+
 # Clean build artifacts
 clean:
 	rm -rf bin/

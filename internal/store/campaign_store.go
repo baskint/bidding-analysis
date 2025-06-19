@@ -191,6 +191,11 @@ func (s *CampaignStore) GetCampaign(id uuid.UUID) (*models.Campaign, error) {
 	return campaign, nil
 }
 
+// GetDB returns the database connection (for internal use)
+func (s *CampaignStore) GetDB() *sql.DB {
+	return s.db
+}
+
 // ListCampaigns retrieves campaigns for a user
 func (s *CampaignStore) ListCampaigns(userID uuid.UUID) ([]*models.Campaign, error) {
 	query := `
