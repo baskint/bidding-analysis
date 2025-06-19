@@ -1,4 +1,3 @@
-package server
 package main
 
 import (
@@ -16,7 +15,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/baskint/bidding-analysis/api/grpc/services"
-	"github.com/baskint/bidding-analysis/api/rest"
+	"github.com/baskint/bidding-analysis/api/trpc"
 	"github.com/baskint/bidding-analysis/internal/config"
 	"github.com/baskint/bidding-analysis/internal/store"
 )
@@ -50,16 +49,16 @@ func main() {
 		}
 	}()
 
-	// Start REST API server in a goroutine
+	// Start tRPC server in a goroutine
 	go func() {
-		if err := startRESTServer(cfg, bidStore, campaignStore); err != nil {
-			log.Fatalf("Failed to start REST server: %v", err)
+		if err := startTRPCServer(cfg, bidStore, campaignStore); err != nil {
+			log.Fatalf("Failed to start tRPC server: %v", err)
 		}
 	}()
 
 	log.Printf("Server started successfully")
 	log.Printf("gRPC server listening on port %d", cfg.Server.GRPCPort)
-	log.Printf("REST server listening on port %d", cfg.Server.Port)
+	log.Printf("tRPC server listening on port %d", cfg.Server.Port)
 
 	// Wait for interrupt signal to gracefully shutdown
 	quit := make(chan os.Signal, 1)
@@ -98,19 +97,17 @@ func startGRPCServer(cfg *config.Config, biddingService *services.BiddingService
 	return s.Serve(lis)
 }
 
-// startRESTServer starts the REST API server
-func startRESTServer(cfg *config.Config, bidStore *store.BidStore, campaignStore *store.CampaignStore) error {
-	// Initialize REST handlers
-	restHandler := rest.NewHandler(bidStore, campaignStore)
-	
-	// Setup routes
-	router := rest.SetupRoutes(restHandler)
+// startTRPCServer starts the tRPC server
+func startTRPCServer(cfg *config.Config, bidStore *store.BidStore, campaignStore *store.CampaignStore) error {
+	// Initialize tRPC handler
+	trpcHandler := trpc.NewHandler(bidStore, campaignStore)
 
+	// Setup HTTP server with tRPC routes
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler: router,
+		Handler: trpcHandler.SetupRoutes(),
 	}
 
-	log.Printf("REST server starting on port %d", cfg.Server.Port)
+	log.Printf("tRPC server starting on port %d", cfg.Server.Port)
 	return server.ListenAndServe()
 }
