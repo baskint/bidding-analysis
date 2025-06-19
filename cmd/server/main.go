@@ -17,6 +17,7 @@ import (
 	"github.com/baskint/bidding-analysis/api/grpc/services"
 	"github.com/baskint/bidding-analysis/api/trpc"
 	"github.com/baskint/bidding-analysis/internal/config"
+	"github.com/baskint/bidding-analysis/internal/ml"
 	"github.com/baskint/bidding-analysis/internal/store"
 )
 
@@ -38,6 +39,9 @@ func main() {
 	bidStore := store.NewBidStore(db)
 	campaignStore := store.NewCampaignStore(db)
 
+	// Initialize ML predictor
+	predictor := ml.NewPredictor(cfg.OpenAI.APIKey, bidStore)
+
 	// Initialize services
 	biddingService := services.NewBiddingService(bidStore, cfg)
 	analyticsService := services.NewAnalyticsService(campaignStore, bidStore)
@@ -51,7 +55,7 @@ func main() {
 
 	// Start tRPC server in a goroutine
 	go func() {
-		if err := startTRPCServer(cfg, bidStore, campaignStore); err != nil {
+		if err := startTRPCServer(cfg, bidStore, campaignStore, predictor); err != nil {
 			log.Fatalf("Failed to start tRPC server: %v", err)
 		}
 	}()
@@ -98,9 +102,9 @@ func startGRPCServer(cfg *config.Config, biddingService *services.BiddingService
 }
 
 // startTRPCServer starts the tRPC server
-func startTRPCServer(cfg *config.Config, bidStore *store.BidStore, campaignStore *store.CampaignStore) error {
+func startTRPCServer(cfg *config.Config, bidStore *store.BidStore, campaignStore *store.CampaignStore, predictor *ml.Predictor) error {
 	// Initialize tRPC handler
-	trpcHandler := trpc.NewHandler(bidStore, campaignStore)
+	trpcHandler := trpc.NewHandler(bidStore, campaignStore, predictor)
 
 	// Setup HTTP server with tRPC routes
 	server := &http.Server{

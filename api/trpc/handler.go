@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
+	"github.com/baskint/bidding-analysis/internal/ml"
+	"github.com/baskint/bidding-analysis/internal/models"
 	"github.com/baskint/bidding-analysis/internal/store"
 )
 
@@ -16,13 +18,15 @@ import (
 type Handler struct {
 	bidStore      *store.BidStore
 	campaignStore *store.CampaignStore
+	predictor     *ml.Predictor
 }
 
 // NewHandler creates a new tRPC Handler instance
-func NewHandler(bidStore *store.BidStore, campaignStore *store.CampaignStore) *Handler {
+func NewHandler(bidStore *store.BidStore, campaignStore *store.CampaignStore, predictor *ml.Predictor) *Handler {
 	return &Handler{
 		bidStore:      bidStore,
 		campaignStore: campaignStore,
+		predictor:     predictor,
 	}
 }
 
@@ -58,6 +62,9 @@ func (h *Handler) SetupRoutes() http.Handler {
 	// tRPC routes
 	api := router.PathPrefix("/trpc").Subrouter()
 
+	// Bidding procedures
+	api.HandleFunc("/bidding.processBid", h.processBid).Methods("POST")
+
 	// Campaign procedures
 	api.HandleFunc("/campaign.getStats", h.getCampaignStats).Methods("GET", "POST")
 	api.HandleFunc("/campaign.getBidHistory", h.getBidHistory).Methods("GET", "POST")
@@ -67,6 +74,73 @@ func (h *Handler) SetupRoutes() http.Handler {
 	api.HandleFunc("/analytics.getModelAccuracy", h.getModelAccuracy).Methods("GET", "POST")
 
 	return router
+}
+
+// processBid handles bid processing requests
+func (h *Handler) processBid(w http.ResponseWriter, r *http.Request) {
+	input := struct {
+		CampaignID            string   `json:"campaignId"`
+		UserID                string   `json:"userId"`
+		FloorPrice            float64  `json:"floorPrice"`
+		DeviceType            string   `json:"deviceType"`
+		OS                    string   `json:"os"`
+		Browser               string   `json:"browser"`
+		Country               string   `json:"country"`
+		Region                string   `json:"region"`
+		City                  string   `json:"city"`
+		Keywords              []string `json:"keywords"`
+		SegmentID             string   `json:"segmentId"`
+		SegmentCategory       string   `json:"segmentCategory"`
+		EngagementScore       float64  `json:"engagementScore"`
+		ConversionProbability float64  `json:"conversionProbability"`
+	}{}
+
+	if err := parseInput(r, &input); err != nil {
+		writeError(w, 400, "Invalid input", err)
+		return
+	}
+
+	// Parse campaign ID
+	campaignID, err := uuid.Parse(input.CampaignID)
+	if err != nil {
+		writeError(w, 400, "Invalid campaign ID", err)
+		return
+	}
+
+	// Build bid request
+	bidRequest := &models.BidRequest{
+		CampaignID: campaignID,
+		UserID:     input.UserID,
+		UserSegment: models.UserSegment{
+			SegmentID:             input.SegmentID,
+			Category:              input.SegmentCategory,
+			EngagementScore:       input.EngagementScore,
+			ConversionProbability: input.ConversionProbability,
+		},
+		GeoLocation: models.GeoLocation{
+			Country: input.Country,
+			Region:  input.Region,
+			City:    input.City,
+		},
+		DeviceInfo: models.DeviceInfo{
+			DeviceType: input.DeviceType,
+			OS:         input.OS,
+			Browser:    input.Browser,
+			IsMobile:   input.DeviceType == "mobile",
+		},
+		FloorPrice: input.FloorPrice,
+		Keywords:   input.Keywords,
+		Timestamp:  time.Now(),
+	}
+
+	// Get prediction
+	prediction, err := h.predictor.PredictOptimalBid(r.Context(), bidRequest)
+	if err != nil {
+		writeError(w, 500, "Failed to get bid prediction", err)
+		return
+	}
+
+	writeSuccess(w, prediction)
 }
 
 // getCampaignStats handles campaign statistics requests
