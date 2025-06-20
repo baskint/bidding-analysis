@@ -2,6 +2,7 @@ package trpc
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -61,6 +62,12 @@ func (h *Handler) SetupRoutes() http.Handler {
 
 	// tRPC routes
 	api := router.PathPrefix("/trpc").Subrouter()
+
+	// Test/debug endpoints
+	api.HandleFunc("/debug", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("DEBUG: /debug endpoint hit!\n")
+		writeSuccess(w, map[string]string{"message": "debug endpoint working"})
+	}).Methods("GET")
 
 	// Bidding procedures
 	api.HandleFunc("/bidding.processBid", h.processBid).Methods("POST")
@@ -145,36 +152,48 @@ func (h *Handler) processBid(w http.ResponseWriter, r *http.Request) {
 
 // getCampaignStats handles campaign statistics requests
 func (h *Handler) getCampaignStats(w http.ResponseWriter, r *http.Request) {
-	input := struct {
-		CampaignID string `json:"campaignId"`
-		StartTime  string `json:"startTime"`
-		EndTime    string `json:"endTime"`
-	}{}
+	campaignID := r.URL.Query().Get("campaignId")
+	startTime := r.URL.Query().Get("startTime")
+	endTime := r.URL.Query().Get("endTime")
 
-	if err := parseInput(r, &input); err != nil {
-		writeError(w, 400, "Invalid input", err)
+	if campaignID == "" {
+		writeError(w, 400, "Missing campaignId parameter", nil)
 		return
 	}
 
-	campaignID, err := uuid.Parse(input.CampaignID)
+	// Parse campaign ID
+	id, err := uuid.Parse(campaignID)
 	if err != nil {
 		writeError(w, 400, "Invalid campaign ID", err)
 		return
 	}
 
-	startTime, err := time.Parse("2006-01-02", input.StartTime)
-	if err != nil {
-		startTime = time.Now().AddDate(0, 0, -7)
+	// Parse time range
+	var start, end time.Time
+	if startTime != "" {
+		start, err = time.Parse("2006-01-02", startTime)
+		if err != nil {
+			writeError(w, 400, "Invalid startTime format (use YYYY-MM-DD)", err)
+			return
+		}
+	} else {
+		start = time.Now().AddDate(0, 0, -30) // Default to last 30 days
 	}
 
-	endTime, err := time.Parse("2006-01-02", input.EndTime)
-	if err != nil {
-		endTime = time.Now()
+	if endTime != "" {
+		end, err = time.Parse("2006-01-02", endTime)
+		if err != nil {
+			writeError(w, 400, "Invalid endTime format (use YYYY-MM-DD)", err)
+			return
+		}
+	} else {
+		end = time.Now()
 	}
 
-	stats, err := h.campaignStore.GetCampaignStats(campaignID, startTime, endTime)
+	// Get campaign statistics using the ML predictor
+	stats, err := h.predictor.AnalyzeCampaignPerformance(r.Context(), id, int(end.Sub(start).Hours()/24))
 	if err != nil {
-		writeError(w, 500, "Failed to get campaign stats", err)
+		writeError(w, 500, "Failed to get campaign statistics", err)
 		return
 	}
 

@@ -73,11 +73,17 @@ func (p *Predictor) AnalyzeCampaignPerformance(ctx context.Context, campaignID u
 	startTime := time.Now().AddDate(0, 0, -days)
 	endTime := time.Now()
 
+	fmt.Printf("DEBUG ML: AnalyzeCampaignPerformance called with campaignID=%v, days=%d\n", campaignID, days)
+	fmt.Printf("DEBUG ML: Time range: %v to %v\n", startTime, endTime)
+
 	// Get recent bid data
 	bidData, err := p.bidStore.GetBidHistory(campaignID.String(), startTime, endTime, 1000, 0)
 	if err != nil {
+		fmt.Printf("DEBUG ML: GetBidHistory error: %v\n", err)
 		return nil, fmt.Errorf("failed to get bid history: %w", err)
 	}
+
+	fmt.Printf("DEBUG ML: GetBidHistory returned %d events\n", len(bidData))
 
 	if len(bidData) == 0 {
 		return &CampaignAnalysis{
