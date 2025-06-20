@@ -2,11 +2,11 @@ steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/bidding-analysis:latest', '.']
-
+  
   # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/bidding-analysis:latest']
-
+  
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
@@ -25,9 +25,27 @@ steps:
       - '8080'
       - '--set-env-vars'
       - 'DATABASE_URL=${_DATABASE_URL}'
+      - '--set-env-vars'
+      - 'DB_HOST=${_DB_HOST}'
+      - '--set-env-vars'
+      - 'DB_USER=${_DB_USER}'
+      - '--set-env-vars'
+      - 'DB_PASSWORD=${_DB_PASSWORD}'
+      - '--set-env-vars'
+      - 'DB_NAME=${_DB_NAME}'
+      - '--set-env-vars'
+      - 'DB_PORT=${_DB_PORT}'
+      - '--set-env-vars'
+      - 'OPENAI_API_KEY=${_OPENAI_API_KEY}'
 
 substitutions:
   _DATABASE_URL: '${_DATABASE_URL}'
+  _DB_HOST: '${_DB_HOST}'
+  _DB_USER: '${_DB_USER}'
+  _DB_PASSWORD: '${_DB_PASSWORD}'
+  _DB_NAME: '${_DB_NAME}'
+  _DB_PORT: '${_DB_PORT}'
+  _OPENAI_API_KEY: '${_OPENAI_API_KEY}'
 
 options:
   logging: CLOUD_LOGGING_ONLY

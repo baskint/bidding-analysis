@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net"
@@ -9,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -42,6 +40,17 @@ func main() {
 	// Initialize ML predictor
 	predictor := ml.NewPredictor(cfg.OpenAI.APIKey, bidStore)
 
+	// Check if running in Cloud Run (simpler deployment)
+	if os.Getenv("K_SERVICE") != "" {
+		// Running in Cloud Run - only start tRPC server
+		log.Printf("Running in Cloud Run")
+		if err := startTRPCServer(cfg, bidStore, campaignStore, predictor); err != nil {
+			log.Fatalf("Failed to start tRPC server: %v", err)
+		}
+		return
+	}
+
+	// Local development - start both servers
 	// Initialize services
 	biddingService := services.NewBiddingService(bidStore, cfg)
 	analyticsService := services.NewAnalyticsService(campaignStore, bidStore)
@@ -70,15 +79,6 @@ func main() {
 	<-quit
 
 	log.Println("Shutting down servers...")
-
-	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// Here you would add graceful shutdown logic for your servers
-	_ = ctx
-
-	log.Println("Servers stopped")
 }
 
 // startGRPCServer starts the gRPC server
@@ -106,12 +106,18 @@ func startTRPCServer(cfg *config.Config, bidStore *store.BidStore, campaignStore
 	// Initialize tRPC handler
 	trpcHandler := trpc.NewHandler(bidStore, campaignStore, predictor)
 
+	// Use Cloud Run's PORT environment variable, fallback to config
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = fmt.Sprintf("%d", cfg.Server.Port)
+	}
+
 	// Setup HTTP server with tRPC routes
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
+		Addr:    fmt.Sprintf(":%s", port),
 		Handler: trpcHandler.SetupRoutes(),
 	}
 
-	log.Printf("tRPC server starting on port %d", cfg.Server.Port)
+	log.Printf("tRPC server starting on port %s", port)
 	return server.ListenAndServe()
 }
