@@ -65,7 +65,7 @@ func Load() (*Config, error) {
 	cfg.Database.Name = getEnv("DB_NAME", "bidding_analysis")
 	cfg.Database.User = getEnv("DB_USER", "postgres")
 	cfg.Database.Password = getEnv("DB_PASSWORD", "")
-	cfg.Database.SSLMode = getEnv("DB_SSL_MODE", "disable")
+	cfg.Database.SSLMode = getEnv("DB_SSL_MODE", "require")
 
 	// Server configuration
 	cfg.Server.Port = getEnvAsInt("SERVER_PORT", 8080)
