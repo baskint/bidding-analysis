@@ -2,8 +2,18 @@
 "use client";
 
 import { Activity, DollarSign, Shield, TrendingUp, Clock } from "lucide-react";
+import React from "react";
 
-const activities = [
+const activities: Array<{
+  id: number;
+  type: string;
+  title: string;
+  description: string;
+  amount: string | null;
+  time: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: "green" | "red" | "blue" | "yellow";
+}> = [
   {
     id: 1,
     type: "bid_won",
@@ -66,7 +76,7 @@ const activities = [
   },
 ];
 
-const colorClasses = {
+const colorClasses: Record<"green" | "red" | "blue" | "yellow", string> = {
   green: "bg-green-100 text-green-600",
   red: "bg-red-100 text-red-600",
   blue: "bg-blue-100 text-blue-600",

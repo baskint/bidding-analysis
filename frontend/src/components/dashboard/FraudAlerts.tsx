@@ -3,7 +3,16 @@
 
 import { AlertTriangle, Shield, Eye, X } from "lucide-react";
 
-const alerts = [
+const alerts: Array<{
+  id: number;
+  severity: "high" | "medium" | "low";
+  title: string;
+  description: string;
+  source: string;
+  blocked: number;
+  time: string;
+  status: "active" | "investigating" | "resolved";
+}> = [
   {
     id: 1,
     severity: "high",
@@ -46,19 +55,19 @@ const alerts = [
   },
 ];
 
-const severityColors = {
+const severityColors: Record<"high" | "medium" | "low", string> = {
   high: "border-red-200 bg-red-50",
   medium: "border-yellow-200 bg-yellow-50",
   low: "border-blue-200 bg-blue-50",
 };
 
-const severityBadges = {
+const severityBadges: Record<"high" | "medium" | "low", string> = {
   high: "bg-red-100 text-red-800",
   medium: "bg-yellow-100 text-yellow-800",
   low: "bg-blue-100 text-blue-800",
 };
 
-const statusColors = {
+const statusColors: Record<"active" | "investigating" | "resolved", string> = {
   active: "text-red-600",
   investigating: "text-yellow-600",
   resolved: "text-green-600",

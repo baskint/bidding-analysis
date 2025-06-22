@@ -2,7 +2,7 @@
 "use client";
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 
 const campaignData = [
   { name: "E-commerce", spend: 12400, revenue: 18600, roas: 1.5 },
