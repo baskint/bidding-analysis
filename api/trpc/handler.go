@@ -1,17 +1,11 @@
 package trpc
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"strconv"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
 	"github.com/baskint/bidding-analysis/internal/ml"
-	"github.com/baskint/bidding-analysis/internal/models"
 	"github.com/baskint/bidding-analysis/internal/store"
 )
 
@@ -31,31 +25,13 @@ func NewHandler(bidStore *store.BidStore, campaignStore *store.CampaignStore, pr
 	}
 }
 
-// TRPCResponse represents a tRPC response structure
-type TRPCResponse struct {
-	Result *TRPCResult `json:"result,omitempty"`
-	Error  *TRPCError  `json:"error,omitempty"`
-}
-
-// TRPCResult represents successful tRPC result
-type TRPCResult struct {
-	Data interface{} `json:"data"`
-	Type string      `json:"type"`
-}
-
-// TRPCError represents tRPC error
-type TRPCError struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
 // SetupRoutes configures all tRPC routes
 func (h *Handler) SetupRoutes() http.Handler {
 	router := mux.NewRouter()
 
-	// CORS middleware
+	// Apply middleware
 	router.Use(corsMiddleware)
+	router.Use(loggingMiddleware)
 
 	// Health check
 	router.HandleFunc("/health", h.healthCheck).Methods("GET")
@@ -63,11 +39,8 @@ func (h *Handler) SetupRoutes() http.Handler {
 	// tRPC routes
 	api := router.PathPrefix("/trpc").Subrouter()
 
-	// Test/debug endpoints
-	api.HandleFunc("/debug", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("DEBUG: /debug endpoint hit!\n")
-		writeSuccess(w, map[string]string{"message": "debug endpoint working"})
-	}).Methods("GET")
+	// Debug endpoint
+	api.HandleFunc("/debug", h.debugEndpoint).Methods("GET")
 
 	// Bidding procedures
 	api.HandleFunc("/bidding.processBid", h.processBid).Methods("POST")
@@ -81,325 +54,4 @@ func (h *Handler) SetupRoutes() http.Handler {
 	api.HandleFunc("/analytics.getModelAccuracy", h.getModelAccuracy).Methods("GET", "POST")
 
 	return router
-}
-
-// processBid handles bid processing requests
-func (h *Handler) processBid(w http.ResponseWriter, r *http.Request) {
-	input := struct {
-		CampaignID            string   `json:"campaignId"`
-		UserID                string   `json:"userId"`
-		FloorPrice            float64  `json:"floorPrice"`
-		DeviceType            string   `json:"deviceType"`
-		OS                    string   `json:"os"`
-		Browser               string   `json:"browser"`
-		Country               string   `json:"country"`
-		Region                string   `json:"region"`
-		City                  string   `json:"city"`
-		Keywords              []string `json:"keywords"`
-		SegmentID             string   `json:"segmentId"`
-		SegmentCategory       string   `json:"segmentCategory"`
-		EngagementScore       float64  `json:"engagementScore"`
-		ConversionProbability float64  `json:"conversionProbability"`
-	}{}
-
-	if err := parseInput(r, &input); err != nil {
-		writeError(w, 400, "Invalid input", err)
-		return
-	}
-
-	// Parse campaign ID
-	campaignID, err := uuid.Parse(input.CampaignID)
-	if err != nil {
-		writeError(w, 400, "Invalid campaign ID", err)
-		return
-	}
-
-	// Build bid request
-	bidRequest := &models.BidRequest{
-		CampaignID: campaignID,
-		UserID:     input.UserID,
-		UserSegment: models.UserSegment{
-			SegmentID:             input.SegmentID,
-			Category:              input.SegmentCategory,
-			EngagementScore:       input.EngagementScore,
-			ConversionProbability: input.ConversionProbability,
-		},
-		GeoLocation: models.GeoLocation{
-			Country: input.Country,
-			Region:  input.Region,
-			City:    input.City,
-		},
-		DeviceInfo: models.DeviceInfo{
-			DeviceType: input.DeviceType,
-			OS:         input.OS,
-			Browser:    input.Browser,
-			IsMobile:   input.DeviceType == "mobile",
-		},
-		FloorPrice: input.FloorPrice,
-		Keywords:   input.Keywords,
-		Timestamp:  time.Now(),
-	}
-
-	// Get prediction
-	prediction, err := h.predictor.PredictOptimalBid(r.Context(), bidRequest)
-	if err != nil {
-		writeError(w, 500, "Failed to get bid prediction", err)
-		return
-	}
-
-	writeSuccess(w, prediction)
-}
-
-// getCampaignStats handles campaign statistics requests
-func (h *Handler) getCampaignStats(w http.ResponseWriter, r *http.Request) {
-	campaignID := r.URL.Query().Get("campaignId")
-	startTime := r.URL.Query().Get("startTime")
-	endTime := r.URL.Query().Get("endTime")
-
-	if campaignID == "" {
-		writeError(w, 400, "Missing campaignId parameter", nil)
-		return
-	}
-
-	// Parse campaign ID
-	id, err := uuid.Parse(campaignID)
-	if err != nil {
-		writeError(w, 400, "Invalid campaign ID", err)
-		return
-	}
-
-	// Parse time range
-	var start, end time.Time
-	if startTime != "" {
-		start, err = time.Parse("2006-01-02", startTime)
-		if err != nil {
-			writeError(w, 400, "Invalid startTime format (use YYYY-MM-DD)", err)
-			return
-		}
-	} else {
-		start = time.Now().AddDate(0, 0, -30) // Default to last 30 days
-	}
-
-	if endTime != "" {
-		end, err = time.Parse("2006-01-02", endTime)
-		if err != nil {
-			writeError(w, 400, "Invalid endTime format (use YYYY-MM-DD)", err)
-			return
-		}
-	} else {
-		end = time.Now()
-	}
-
-	// Get campaign statistics using the ML predictor
-	stats, err := h.predictor.AnalyzeCampaignPerformance(r.Context(), id, int(end.Sub(start).Hours()/24))
-	if err != nil {
-		writeError(w, 500, "Failed to get campaign statistics", err)
-		return
-	}
-
-	writeSuccess(w, stats)
-}
-
-// getBidHistory handles bid history requests
-func (h *Handler) getBidHistory(w http.ResponseWriter, r *http.Request) {
-	input := struct {
-		CampaignID string `json:"campaignId"`
-		StartTime  string `json:"startTime"`
-		EndTime    string `json:"endTime"`
-		Limit      int    `json:"limit"`
-		Offset     int    `json:"offset"`
-	}{}
-
-	if err := parseInput(r, &input); err != nil {
-		writeError(w, 400, "Invalid input", err)
-		return
-	}
-
-	if input.Limit <= 0 {
-		input.Limit = 100
-	}
-	if input.Offset < 0 {
-		input.Offset = 0
-	}
-
-	startTime, err := time.Parse("2006-01-02", input.StartTime)
-	if err != nil {
-		startTime = time.Now().AddDate(0, 0, -1)
-	}
-
-	endTime, err := time.Parse("2006-01-02", input.EndTime)
-	if err != nil {
-		endTime = time.Now()
-	}
-
-	bids, err := h.bidStore.GetBidHistory(input.CampaignID, startTime, endTime, input.Limit, input.Offset)
-	if err != nil {
-		writeError(w, 500, "Failed to get bid history", err)
-		return
-	}
-
-	result := map[string]interface{}{
-		"bids":   bids,
-		"limit":  input.Limit,
-		"offset": input.Offset,
-	}
-
-	writeSuccess(w, result)
-}
-
-// getFraudAlerts handles fraud alerts requests
-func (h *Handler) getFraudAlerts(w http.ResponseWriter, r *http.Request) {
-	input := struct {
-		StartTime         string `json:"startTime"`
-		EndTime           string `json:"endTime"`
-		SeverityThreshold int    `json:"severityThreshold"`
-	}{}
-
-	if err := parseInput(r, &input); err != nil {
-		writeError(w, 400, "Invalid input", err)
-		return
-	}
-
-	startTime, err := time.Parse("2006-01-02", input.StartTime)
-	if err != nil {
-		startTime = time.Now().AddDate(0, 0, -7)
-	}
-
-	endTime, err := time.Parse("2006-01-02", input.EndTime)
-	if err != nil {
-		endTime = time.Now()
-	}
-
-	if input.SeverityThreshold < 1 || input.SeverityThreshold > 10 {
-		input.SeverityThreshold = 5
-	}
-
-	alerts, err := h.campaignStore.GetFraudAlerts(startTime, endTime, input.SeverityThreshold)
-	if err != nil {
-		writeError(w, 500, "Failed to get fraud alerts", err)
-		return
-	}
-
-	writeSuccess(w, alerts)
-}
-
-// getModelAccuracy handles model accuracy requests
-func (h *Handler) getModelAccuracy(w http.ResponseWriter, r *http.Request) {
-	input := struct {
-		StartTime    string `json:"startTime"`
-		EndTime      string `json:"endTime"`
-		ModelVersion string `json:"modelVersion"`
-	}{}
-
-	if err := parseInput(r, &input); err != nil {
-		writeError(w, 400, "Invalid input", err)
-		return
-	}
-
-	startTime, err := time.Parse("2006-01-02", input.StartTime)
-	if err != nil {
-		startTime = time.Now().AddDate(0, 0, -7)
-	}
-
-	endTime, err := time.Parse("2006-01-02", input.EndTime)
-	if err != nil {
-		endTime = time.Now()
-	}
-
-	metrics, err := h.campaignStore.GetModelAccuracy(startTime, endTime, input.ModelVersion)
-	if err != nil {
-		writeError(w, 500, "Failed to get model accuracy", err)
-		return
-	}
-
-	writeSuccess(w, metrics)
-}
-
-// healthCheck handles health check requests
-func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
-	result := map[string]interface{}{
-		"status":    "ok",
-		"timestamp": time.Now(),
-	}
-	writeSuccess(w, result)
-}
-
-// Helper functions
-
-func parseInput(r *http.Request, input interface{}) error {
-	if r.Method == "GET" {
-		// Parse query parameters for GET requests
-		return parseQueryParams(r, input)
-	}
-
-	// Parse JSON body for POST requests
-	return json.NewDecoder(r.Body).Decode(input)
-}
-
-func parseQueryParams(r *http.Request, input interface{}) error {
-	// This is a simplified implementation
-	// In a real tRPC setup, you'd parse the query parameters properly
-	query := r.URL.Query()
-
-	// Convert to JSON and back for simplicity
-	jsonData := make(map[string]interface{})
-	for key, values := range query {
-		if len(values) > 0 {
-			// Try to parse as int, fallback to string
-			if intVal, err := strconv.Atoi(values[0]); err == nil {
-				jsonData[key] = intVal
-			} else {
-				jsonData[key] = values[0]
-			}
-		}
-	}
-
-	jsonBytes, err := json.Marshal(jsonData)
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(jsonBytes, input)
-}
-
-func writeSuccess(w http.ResponseWriter, data interface{}) {
-	response := TRPCResponse{
-		Result: &TRPCResult{
-			Data: data,
-			Type: "data",
-		},
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
-}
-
-func writeError(w http.ResponseWriter, code int, message string, err error) {
-	response := TRPCResponse{
-		Error: &TRPCError{
-			Code:    code,
-			Message: message,
-			Data:    err.Error(),
-		},
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(response)
-}
-
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
 }

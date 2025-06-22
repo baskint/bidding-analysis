@@ -30,6 +30,7 @@ Thumbs.db
 # Environment and secrets
 .env
 .env.local
+.env.gcp
 .env.production
 .env.staging
 *.pem
