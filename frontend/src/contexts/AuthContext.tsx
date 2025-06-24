@@ -1,6 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+// src/contexts/AuthContext.tsx
+"use client";
+
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { User, onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 interface AuthContextType {
   user: User | null;
@@ -17,7 +20,7 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -26,25 +29,42 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
-// Fixed function declaration - proper TypeScript syntax
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
+    console.log("AuthProvider: Setting up auth listener");
 
-    return () => unsubscribe();
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => {
+        console.log(
+          "AuthProvider: Auth state changed",
+          user ? "User logged in" : "User logged out"
+        );
+        setUser(user);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("AuthProvider: Auth state change error:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      console.log("AuthProvider: Cleaning up auth listener");
+      unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
     try {
+      console.log("AuthProvider: Signing out user");
       await firebaseSignOut(auth);
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("AuthProvider: Error signing out:", error);
+      throw error;
     }
   };
 
@@ -54,9 +74,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signOut,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  console.log("AuthProvider: Rendering with state:", { user: !!user, loading });
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
