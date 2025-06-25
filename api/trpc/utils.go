@@ -4,7 +4,25 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
+
+// generateToken creates a JWT token for the given user
+func (h *Handler) generateToken(userID, username string) (string, error) {
+	claims := Claims{
+		UserID:   userID,
+		Username: username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 7)), // 7 days
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(h.jwtSecret))
+}
 
 // parseInput parses request input from either JSON body (POST) or query params (GET)
 func parseInput(r *http.Request, input interface{}) error {

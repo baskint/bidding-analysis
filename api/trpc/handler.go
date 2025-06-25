@@ -1,7 +1,9 @@
 package trpc
 
 import (
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 
@@ -13,15 +15,31 @@ import (
 type Handler struct {
 	bidStore      *store.BidStore
 	campaignStore *store.CampaignStore
+	userStore     *store.UserStore
 	predictor     *ml.Predictor
+	jwtSecret     string
 }
 
 // NewHandler creates a new tRPC Handler instance
 func NewHandler(bidStore *store.BidStore, campaignStore *store.CampaignStore, predictor *ml.Predictor) *Handler {
+	// Get JWT secret from environment, with fallback
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "your-default-development-secret"
+		log.Println("Warning: Using default JWT secret. Set JWT_SECRET environment variable for production.")
+	}
+
+	// Initialize UserStore using the same database connection as other stores
+	// You'll need to get the database connection from one of the existing stores
+	db := bidStore.DB() // You'll need to add this method to BidStore
+	userStore := store.NewUserStore(db)
+
 	return &Handler{
 		bidStore:      bidStore,
 		campaignStore: campaignStore,
+		userStore:     userStore,
 		predictor:     predictor,
+		jwtSecret:     jwtSecret,
 	}
 }
 
@@ -42,16 +60,27 @@ func (h *Handler) SetupRoutes() http.Handler {
 	// Debug endpoint
 	api.HandleFunc("/debug", h.debugEndpoint).Methods("GET")
 
-	// Bidding procedures
-	api.HandleFunc("/bidding.processBid", h.processBid).Methods("POST")
+	// Auth procedures (public - no authentication required)
+	api.HandleFunc("/auth.login", h.login).Methods("POST")
+	api.HandleFunc("/auth.register", h.register).Methods("POST")
 
-	// Campaign procedures
-	api.HandleFunc("/campaign.getStats", h.getCampaignStats).Methods("GET", "POST")
-	api.HandleFunc("/campaign.getBidHistory", h.getBidHistory).Methods("GET", "POST")
+	// Protected routes (require authentication)
+	protected := api.PathPrefix("").Subrouter()
+	protected.Use(h.authMiddleware)
 
-	// Analytics procedures
-	api.HandleFunc("/analytics.getFraudAlerts", h.getFraudAlerts).Methods("GET", "POST")
-	api.HandleFunc("/analytics.getModelAccuracy", h.getModelAccuracy).Methods("GET", "POST")
+	// Auth procedures (protected)
+	protected.HandleFunc("/auth.me", h.getMe).Methods("GET", "POST")
+
+	// Bidding procedures (now protected)
+	protected.HandleFunc("/bidding.processBid", h.processBid).Methods("POST")
+
+	// Campaign procedures (now protected)
+	protected.HandleFunc("/campaign.getStats", h.getCampaignStats).Methods("GET", "POST")
+	protected.HandleFunc("/campaign.getBidHistory", h.getBidHistory).Methods("GET", "POST")
+
+	// Analytics procedures (now protected)
+	protected.HandleFunc("/analytics.getFraudAlerts", h.getFraudAlerts).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getModelAccuracy", h.getModelAccuracy).Methods("GET", "POST")
 
 	return router
 }

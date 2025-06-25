@@ -17,6 +17,11 @@ func NewBidStore(db *sql.DB) *BidStore {
 	return &BidStore{db: db}
 }
 
+// DB returns the underlying database connection for use by other stores
+func (s *BidStore) DB() *sql.DB {
+	return s.db
+}
+
 // StoreBidEvent stores a new bid event in the database
 func (s *BidStore) StoreBidEvent(bid *models.BidEvent) error {
 	query := `

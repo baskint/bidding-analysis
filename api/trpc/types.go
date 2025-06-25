@@ -1,5 +1,11 @@
 package trpc
 
+import (
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
 // TRPCResponse represents a tRPC response structure
 type TRPCResponse struct {
 	Result *TRPCResult `json:"result,omitempty"`
@@ -65,4 +71,32 @@ type ModelAccuracyInput struct {
 	StartTime    string `json:"startTime"`
 	EndTime      string `json:"endTime"`
 	ModelVersion string `json:"modelVersion"`
+}
+
+// Auth request/response types
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type RegisterRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type AuthResponse struct {
+	User  User   `json:"user"`
+	Token string `json:"token"`
+}
+
+type User struct {
+	ID        string    `json:"id"`
+	Username  string    `json:"username"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type Claims struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	jwt.RegisteredClaims
 }
