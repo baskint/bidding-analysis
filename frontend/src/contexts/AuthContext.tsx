@@ -14,7 +14,7 @@ import { getCurrentUser } from "@/lib/api";
 
 // Get API base URL from environment
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://bidding-analysis-539382269313.us-central1.run.app";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 // Combined user type
 interface CombinedUser {

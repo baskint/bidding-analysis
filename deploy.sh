@@ -29,6 +29,17 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+cat > /tmp/env.yaml << EOF
+DATABASE_URL: "${DATABASE_URL}"
+DB_HOST: "${DB_HOST}"
+DB_USER: "${DB_USER}"
+DB_PASSWORD: "${DB_PASSWORD}"
+DB_NAME: "${DB_NAME}"
+DB_PORT: "${DB_PORT}"
+OPENAI_API_KEY: "${OPENAI_API_KEY}"
+ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
+EOF
+
 echo "☁️  Step 3: Deploying to Cloud Run..."
 gcloud run deploy ${SERVICE_NAME} \
   --image ${IMAGE_NAME} \
@@ -42,7 +53,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --concurrency 80 \
   --max-instances 10 \
   --project ${PROJECT_ID} \
-  --set-env-vars "DATABASE_URL=${DATABASE_URL},DB_HOST=${DB_HOST},DB_USER=${DB_USER},DB_PASSWORD=${DB_PASSWORD},DB_NAME=${DB_NAME},DB_PORT=${DB_PORT},OPENAI_API_KEY=${OPENAI_API_KEY}"
+ --env-vars-file /tmp/env.yaml
 
 if [ $? -eq 0 ]; then
     echo "✅ Deployment successful!"
