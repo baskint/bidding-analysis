@@ -14,7 +14,7 @@ export default function DebugAuth() {
       {user && (
         <>
           <p>Email: {user.email}</p>
-          <p>Name: {user.displayName || 'No name'}</p>
+          <p>Name: {user.username || 'No name'}</p>
         </>
       )}
     </div>

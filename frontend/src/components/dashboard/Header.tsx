@@ -37,7 +37,7 @@ export function Header() {
           <div className='relative'>
             <div className='flex items-center space-x-3'>
               <div className='text-right'>
-                <p className='text-sm font-medium text-slate-900'>{user?.displayName || "User"}</p>
+                <p className='text-sm font-medium text-slate-900'>{user?.username || "User"}</p>
                 <p className='text-xs text-slate-500'>{user?.email || "user@example.com"}</p>
               </div>
               <button
@@ -53,7 +53,7 @@ export function Header() {
                   />
                 ) : (
                   <span className='text-white text-sm font-medium'>
-                    {(user?.displayName || user?.email || "U").charAt(0).toUpperCase()}
+                    {(user?.username || user?.email || "U").charAt(0).toUpperCase()}
                   </span>
                 )}
               </button>
@@ -64,7 +64,7 @@ export function Header() {
               <div className='absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50'>
                 <div className='px-4 py-2 border-b border-slate-100'>
                   <p className='text-sm font-medium text-slate-900 truncate'>
-                    {user?.displayName || "User"}
+                    {user?.username || "User"}
                   </p>
                   <p className='text-xs text-slate-500 truncate'>{user?.email}</p>
                 </div>

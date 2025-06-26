@@ -60,7 +60,7 @@ export default function LogoutPage() {
           {user.email && (
             <div className="mt-4 p-3 bg-blue-50 rounded-md">
               <p className="text-sm text-blue-800">
-                <span className="font-medium">Signed in as:</span> {user.displayName || user.email}
+                <span className="font-medium">Signed in as:</span> {user.username || user.email}
               </p>
             </div>
           )}

@@ -9,10 +9,10 @@ export function useAuthApi() {
   const login = async (username: string, password: string): Promise<AuthResponse | null> => {
     setLoading(true);
     setError(null);
-
     try {
       const result = await loginUser(username, password);
-      localStorage.setItem('authToken', result.token);
+      // Store token and user info
+      localStorage.setItem('auth_token', result.token);
       localStorage.setItem('user', JSON.stringify(result.user));
       return result;
     } catch (err) {
@@ -27,10 +27,10 @@ export function useAuthApi() {
   const register = async (username: string, password: string): Promise<AuthResponse | null> => {
     setLoading(true);
     setError(null);
-
     try {
       const result = await registerUser(username, password);
-      localStorage.setItem('authToken', result.token);
+      // Store token and user info
+      localStorage.setItem('auth_token', result.token);
       localStorage.setItem('user', JSON.stringify(result.user));
       return result;
     } catch (err) {
@@ -42,9 +42,25 @@ export function useAuthApi() {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('authToken');
+  const logout = (): void => {
+    localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
+  };
+
+  // Helper to check if user is authenticated
+  const isAuthenticated = (): boolean => {
+    return !!localStorage.getItem('auth_token');
+  };
+
+  // Helper to get current user from localStorage
+  const getCurrentUser = () => {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  };
+
+  // Clear error
+  const clearError = (): void => {
+    setError(null);
   };
 
   return {
@@ -53,5 +69,8 @@ export function useAuthApi() {
     logout,
     loading,
     error,
+    isAuthenticated,
+    getCurrentUser,
+    clearError,
   };
 }

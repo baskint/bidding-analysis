@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"google.golang.org/grpc"
@@ -18,6 +19,50 @@ import (
 	"github.com/baskint/bidding-analysis/internal/ml"
 	"github.com/baskint/bidding-analysis/internal/store"
 )
+
+// corsMiddleware handles CORS for all requests
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+
+		// Define allowed origins
+		allowedOrigins := []string{
+			"http://localhost:3000", // Next.js default
+			"http://localhost:3006", // Your current frontend
+		}
+
+		// Add production origins from environment variable
+		if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
+			prodOrigins := strings.Split(envOrigins, ",")
+			for _, prodOrigin := range prodOrigins {
+				allowedOrigins = append(allowedOrigins, strings.TrimSpace(prodOrigin))
+			}
+		}
+
+		// Check if origin is allowed
+		for _, allowedOrigin := range allowedOrigins {
+			if origin == allowedOrigin {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				break
+			}
+		}
+
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Length, Content-Type, Authorization, Accept, X-Requested-With")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Max-Age", "86400") // 24 hours
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		// Continue to next handler
+		next.ServeHTTP(w, r)
+	})
+}
 
 func main() {
 	// Load configuration
@@ -101,7 +146,7 @@ func startGRPCServer(cfg *config.Config, biddingService *services.BiddingService
 	return s.Serve(lis)
 }
 
-// startTRPCServer starts the tRPC server
+// startTRPCServer starts the tRPC server with CORS support
 func startTRPCServer(cfg *config.Config, bidStore *store.BidStore, campaignStore *store.CampaignStore, predictor *ml.Predictor) error {
 	// Initialize tRPC handler
 	trpcHandler := trpc.NewHandler(bidStore, campaignStore, predictor)
@@ -112,12 +157,23 @@ func startTRPCServer(cfg *config.Config, bidStore *store.BidStore, campaignStore
 		port = fmt.Sprintf("%d", cfg.Server.Port)
 	}
 
-	// Setup HTTP server with tRPC routes
+	// Setup HTTP server with tRPC routes and CORS middleware
+	handler := corsMiddleware(trpcHandler.SetupRoutes())
+
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%s", port),
-		Handler: trpcHandler.SetupRoutes(),
+		Handler: handler,
 	}
 
-	log.Printf("tRPC server starting on port %s", port)
+	log.Printf("tRPC server starting on port %s with CORS enabled", port)
+
+	// Log allowed origins for debugging
+	allowedOrigins := []string{"http://localhost:3000", "http://localhost:3006"}
+	if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
+		prodOrigins := strings.Split(envOrigins, ",")
+		allowedOrigins = append(allowedOrigins, prodOrigins...)
+	}
+	log.Printf("CORS allowed origins: %v", allowedOrigins)
+
 	return server.ListenAndServe()
 }

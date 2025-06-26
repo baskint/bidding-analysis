@@ -1,6 +1,26 @@
 // src/hooks/useBiddingApi.ts
 import { useState, useEffect } from 'react';
-import { getBidData, getCampaignData, getAnalytics, type BidData, type CampaignData, type AnalyticsData } from '@/lib/api';
+import {
+  getBidData,
+  getCampaignData,
+  getAnalytics,
+  processBid,
+  type BidData,
+  type CampaignData,
+  type AnalyticsData
+} from '@/lib/api';
+
+// Helper function to handle authentication errors
+const handleAuthError = (error: Error) => {
+  if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+    // Token expired or invalid - redirect to login
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+    return true;
+  }
+  return false;
+};
 
 // Hook for fetching bid data
 export function useBidData() {
@@ -8,18 +28,29 @@ export function useBidData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchBidData = async () => {
+  const fetchBidData = async (): Promise<void> => {
     setLoading(true);
     setError(null);
-
     try {
       const result = await getBidData();
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch bid data');
+      const error = err instanceof Error ? err : new Error('Failed to fetch bid data');
+
+      // Handle authentication errors
+      if (handleAuthError(error)) {
+        return;
+      }
+
+      setError(error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Clear error
+  const clearError = (): void => {
+    setError(null);
   };
 
   return {
@@ -28,6 +59,7 @@ export function useBidData() {
     error,
     fetchBidData,
     refetch: fetchBidData,
+    clearError,
   };
 }
 
@@ -37,18 +69,29 @@ export function useCampaignData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCampaignData = async () => {
+  const fetchCampaignData = async (): Promise<void> => {
     setLoading(true);
     setError(null);
-
     try {
       const result = await getCampaignData();
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch campaign data');
+      const error = err instanceof Error ? err : new Error('Failed to fetch campaign data');
+
+      // Handle authentication errors
+      if (handleAuthError(error)) {
+        return;
+      }
+
+      setError(error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Clear error
+  const clearError = (): void => {
+    setError(null);
   };
 
   return {
@@ -57,6 +100,7 @@ export function useCampaignData() {
     error,
     fetchCampaignData,
     refetch: fetchCampaignData,
+    clearError,
   };
 }
 
@@ -66,24 +110,38 @@ export function useAnalytics() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = async (): Promise<void> => {
     setLoading(true);
     setError(null);
-
     try {
       const result = await getAnalytics();
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
+      const error = err instanceof Error ? err : new Error('Failed to fetch analytics');
+
+      // Handle authentication errors
+      if (handleAuthError(error)) {
+        return;
+      }
+
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Auto-fetch on mount
+  // Auto-fetch on mount only if authenticated
   useEffect(() => {
-    fetchAnalytics();
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      fetchAnalytics();
+    }
   }, []);
+
+  // Clear error
+  const clearError = (): void => {
+    setError(null);
+  };
 
   return {
     data,
@@ -91,5 +149,45 @@ export function useAnalytics() {
     error,
     fetchAnalytics,
     refetch: fetchAnalytics,
+    clearError,
+  };
+}
+
+// Hook for processing bids
+export function useBidProcessor() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const processBidRequest = async (bidData: Partial<BidData>): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      await processBid(bidData);
+      return true;
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to process bid');
+
+      // Handle authentication errors
+      if (handleAuthError(error)) {
+        return false;
+      }
+
+      setError(error.message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Clear error
+  const clearError = (): void => {
+    setError(null);
+  };
+
+  return {
+    loading,
+    error,
+    processBid: processBidRequest,
+    clearError,
   };
 }

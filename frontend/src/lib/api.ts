@@ -1,8 +1,7 @@
 // src/lib/api.ts
-const API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://bidding-analysis-539382269313.us-central1.run.app'
-  : 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
+// Types
 export interface User {
   id: string;
   username: string;
@@ -14,96 +13,141 @@ export interface AuthResponse {
   token: string;
 }
 
-// Helper function for making API requests
-async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Network error' }));
-    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-// Auth API functions
-export async function loginUser(username: string, password: string): Promise<AuthResponse> {
-  return apiRequest<AuthResponse>('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-  });
-}
-
-export async function registerUser(username: string, password: string): Promise<AuthResponse> {
-  return apiRequest<AuthResponse>('/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-  });
-}
-
-export async function getCurrentUser(): Promise<{ user: User }> {
-  return apiRequest<{ user: User }>('/api/auth/me');
-}
-
-// Bidding analysis types
 export interface BidData {
-  id: string;
-  campaign_id: string;
-  amount: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
+  id?: string;
+  campaignId: string;
+  userId: string;
+  bidPrice: number;
+  winPrice?: number;
+  floorPrice?: number;
+  won?: boolean;
+  converted?: boolean;
+  timestamp?: string;
+  [key: string]: unknown;
 }
 
 export interface CampaignData {
   id: string;
   name: string;
-  budget: number;
   status: string;
-  performance_metrics: {
-    impressions: number;
-    clicks: number;
-    conversions: number;
-    cost: number;
-  };
-  created_at: string;
+  budget: number;
+  spent: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  [key: string]: unknown;
 }
 
 export interface AnalyticsData {
-  total_campaigns: number;
-  total_bids: number;
-  total_revenue: number;
-  performance_summary: {
-    click_through_rate: number;
-    conversion_rate: number;
-    cost_per_click: number;
-    return_on_ad_spend: number;
-  };
-  time_period: {
-    start_date: string;
-    end_date: string;
-  };
+  totalBids: number;
+  winRate: number;
+  conversionRate: number;
+  averageBidPrice: number;
+  fraudAlerts: number;
+  modelAccuracy: number;
+  [key: string]: unknown;
 }
 
-// Bidding analysis API functions
+// Helper function to get auth headers
+const getAuthHeaders = (): Record<string, string> => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+  };
+};
+
+// Helper function to handle API responses
+const handleResponse = async (response: Response) => {
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || `API call failed: ${response.status}`);
+  }
+  return response.json();
+};
+
+// Auth API functions
+export async function loginUser(username: string, password: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/trpc/auth.login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ username, password }),
+  });
+
+  return handleResponse(response);
+}
+
+export async function registerUser(username: string, password: string): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/trpc/auth.register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ username, password }),
+  });
+
+  return handleResponse(response);
+}
+
+export async function getCurrentUser(): Promise<{ user: User }> {
+  const response = await fetch(`${API_BASE_URL}/trpc/auth.me`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({}),
+  });
+
+  return handleResponse(response);
+}
+
+// Bidding API functions
 export async function getBidData(): Promise<BidData[]> {
-  return apiRequest<BidData[]>('/api/bids');
+  const response = await fetch(`${API_BASE_URL}/trpc/campaign.getBidHistory`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({}),
+  });
+
+  return handleResponse(response);
 }
 
 export async function getCampaignData(): Promise<CampaignData[]> {
-  return apiRequest<CampaignData[]>('/api/campaigns');
+  const response = await fetch(`${API_BASE_URL}/trpc/campaign.getStats`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({}),
+  });
+
+  return handleResponse(response);
 }
 
 export async function getAnalytics(): Promise<AnalyticsData> {
-  return apiRequest<AnalyticsData>('/api/analytics');
+  const response = await fetch(`${API_BASE_URL}/trpc/analytics.getModelAccuracy`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({}),
+  });
+
+  return handleResponse(response);
+}
+
+export async function getFraudAlerts(): Promise<unknown> {
+  const response = await fetch(`${API_BASE_URL}/trpc/analytics.getFraudAlerts`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({}),
+  });
+
+  return handleResponse(response);
+}
+
+export async function processBid(bidData: Partial<BidData>): Promise<unknown> {
+  const response = await fetch(`${API_BASE_URL}/trpc/bidding.processBid`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(bidData),
+  });
+
+  return handleResponse(response);
 }
