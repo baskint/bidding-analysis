@@ -79,7 +79,7 @@ if grep -r "bidding-analysis-539382269313" out/ > /dev/null 2>&1; then
 else
     echo -e "${RED}❌ Production URL NOT found in built files${NC}"
     echo "The build may still be using localhost. Check your environment setup."
-    
+
     # Check if localhost is still present
     if grep -r "localhost:8080" out/ > /dev/null 2>&1; then
         echo -e "${RED}❌ Found localhost:8080 in built files - environment variable not applied${NC}"
