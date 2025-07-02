@@ -59,6 +59,19 @@ func (g *DataGenerator) GenerateAll() error {
 	log.Println("Creating test user...")
 	userID := g.createTestUser()
 
+	// Actually create the user in the database
+	testUser := &models.User{
+		ID:           userID,
+		Username:     "testuser",
+		PasswordHash: "$2a$10$example.hash.for.testing", // Use a proper bcrypt hash
+	}
+
+	if err := g.createUser(testUser); err != nil {
+		return fmt.Errorf("failed to create test user: %w", err)
+	}
+
+	log.Printf("Created test user with ID: %s", userID)
+
 	log.Println("Generating campaigns...")
 	campaigns, err := g.generateCampaigns(userID, 8)
 	if err != nil {
