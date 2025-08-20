@@ -7,6 +7,16 @@ set -e  # Exit on any error
 
 echo "🚀 Starting deployment to Google Cloud Run..."
 
+# Load environment variables from .env.neon
+if [ -f .env.neon ]; then
+    echo "📋 Loading environment variables from .env.neon..."
+    source .env.neon
+    echo "✅ Environment variables loaded"
+else
+    echo "❌ .env.neon file not found!"
+    exit 1
+fi
+
 # Configuration
 PROJECT_ID="bidding-analysis"
 SERVICE_NAME="bidding-analysis"
