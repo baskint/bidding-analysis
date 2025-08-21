@@ -61,4 +61,5 @@ config/staging.yaml
 # Temporary files
 tmp/
 temp/
-
+# Firebase hosting files
+frontend/.firebase/hosting*
