@@ -1,5 +1,5 @@
 // frontend/src/components/dashboard/CampaignPerformance.tsx
-"use client";
+'use client';;
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp } from "lucide-react";
@@ -57,13 +57,12 @@ export function CampaignPerformance() {
             <div key={campaign.name} className='text-center'>
               <div className='text-xs text-slate-500 mb-1'>{campaign.name}</div>
               <div
-                className={`text-sm font-semibold ${
-                  campaign.roas > 1.6
+                className={`text-sm font-semibold ${campaign.roas > 1.6
                     ? "text-green-600"
                     : campaign.roas > 1.4
-                    ? "text-yellow-600"
-                    : "text-red-600"
-                }`}
+                      ? "text-yellow-600"
+                      : "text-red-600"
+                  }`}
               >
                 {campaign.roas.toFixed(2)}x ROAS
               </div>

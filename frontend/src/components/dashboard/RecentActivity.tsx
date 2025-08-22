@@ -1,5 +1,5 @@
 // frontend/src/components/dashboard/RecentActivity.tsx
-"use client";
+'use client';;
 
 import { Activity, DollarSign, Shield, TrendingUp, Clock } from "lucide-react";
 import React from "react";
@@ -14,67 +14,67 @@ const activities: Array<{
   icon: React.ComponentType<{ className?: string }>;
   color: "green" | "red" | "blue" | "yellow";
 }> = [
-  {
-    id: 1,
-    type: "bid_won",
-    title: "High-value bid won",
-    description: 'Campaign "Black Friday Sale" won bid for $24.50',
-    amount: "$24.50",
-    time: "2 minutes ago",
-    icon: TrendingUp,
-    color: "green",
-  },
-  {
-    id: 2,
-    type: "fraud_blocked",
-    title: "Fraud attempt blocked",
-    description: "Suspicious traffic from IP 192.168.1.1 blocked",
-    amount: null,
-    time: "5 minutes ago",
-    icon: Shield,
-    color: "red",
-  },
-  {
-    id: 3,
-    type: "campaign_started",
-    title: "New campaign launched",
-    description: 'Campaign "Holiday Electronics" is now live',
-    amount: null,
-    time: "12 minutes ago",
-    icon: Activity,
-    color: "blue",
-  },
-  {
-    id: 4,
-    type: "high_spend",
-    title: "Budget milestone reached",
-    description: 'Campaign "Gaming Accessories" reached 80% of daily budget',
-    amount: "$4,200",
-    time: "18 minutes ago",
-    icon: DollarSign,
-    color: "yellow",
-  },
-  {
-    id: 5,
-    type: "bid_won",
-    title: "Premium placement secured",
-    description: 'Won premium ad slot for "Luxury Watches"',
-    amount: "$47.80",
-    time: "25 minutes ago",
-    icon: TrendingUp,
-    color: "green",
-  },
-  {
-    id: 6,
-    type: "fraud_blocked",
-    title: "Click fraud prevented",
-    description: "Blocked 150 fraudulent clicks from bot network",
-    amount: null,
-    time: "32 minutes ago",
-    icon: Shield,
-    color: "red",
-  },
-];
+    {
+      id: 1,
+      type: "bid_won",
+      title: "High-value bid won",
+      description: 'Campaign "Black Friday Sale" won bid for $24.50',
+      amount: "$24.50",
+      time: "2 minutes ago",
+      icon: TrendingUp,
+      color: "green",
+    },
+    {
+      id: 2,
+      type: "fraud_blocked",
+      title: "Fraud attempt blocked",
+      description: "Suspicious traffic from IP 192.168.1.1 blocked",
+      amount: null,
+      time: "5 minutes ago",
+      icon: Shield,
+      color: "red",
+    },
+    {
+      id: 3,
+      type: "campaign_started",
+      title: "New campaign launched",
+      description: 'Campaign "Holiday Electronics" is now live',
+      amount: null,
+      time: "12 minutes ago",
+      icon: Activity,
+      color: "blue",
+    },
+    {
+      id: 4,
+      type: "high_spend",
+      title: "Budget milestone reached",
+      description: 'Campaign "Gaming Accessories" reached 80% of daily budget',
+      amount: "$4,200",
+      time: "18 minutes ago",
+      icon: DollarSign,
+      color: "yellow",
+    },
+    {
+      id: 5,
+      type: "bid_won",
+      title: "Premium placement secured",
+      description: 'Won premium ad slot for "Luxury Watches"',
+      amount: "$47.80",
+      time: "25 minutes ago",
+      icon: TrendingUp,
+      color: "green",
+    },
+    {
+      id: 6,
+      type: "fraud_blocked",
+      title: "Click fraud prevented",
+      description: "Blocked 150 fraudulent clicks from bot network",
+      amount: null,
+      time: "32 minutes ago",
+      icon: Shield,
+      color: "red",
+    },
+  ];
 
 const colorClasses: Record<"green" | "red" | "blue" | "yellow", string> = {
   green: "bg-green-100 text-green-600",
@@ -103,9 +103,8 @@ export function RecentActivity() {
               className='flex items-start space-x-4 p-4 rounded-lg hover:bg-slate-50 transition-colors'
             >
               <div
-                className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                  colorClasses[activity.color]
-                }`}
+                className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${colorClasses[activity.color]
+                  }`}
               >
                 <Icon className='w-5 h-5' />
               </div>

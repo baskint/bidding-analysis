@@ -1,5 +1,5 @@
 // frontend/src/components/dashboard/Header.tsx
-"use client";
+'use client';;
 
 import { Bell, Search, LogOut } from "lucide-react";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import { useState } from "react";
 
 export function Header() {
   const { user } = useAuth();
+  console.log("Header user:", user);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   return (
@@ -38,7 +39,6 @@ export function Header() {
             <div className='flex items-center space-x-3'>
               <div className='text-right'>
                 <p className='text-sm font-medium text-slate-900'>{user?.username || "User"}</p>
-                <p className='text-xs text-slate-500'>{user?.email || "user@example.com"}</p>
               </div>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}

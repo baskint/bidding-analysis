@@ -1,5 +1,5 @@
 // frontend/src/components/dashboard/FraudAlerts.tsx
-"use client";
+'use client';;
 
 import { AlertTriangle, Shield, Eye, X } from "lucide-react";
 
@@ -13,47 +13,47 @@ const alerts: Array<{
   time: string;
   status: "active" | "investigating" | "resolved";
 }> = [
-  {
-    id: 1,
-    severity: "high",
-    title: "Click Farm Detected",
-    description: "Unusual traffic pattern from AS64512",
-    source: "192.168.1.0/24",
-    blocked: 247,
-    time: "3 min ago",
-    status: "active",
-  },
-  {
-    id: 2,
-    severity: "medium",
-    title: "Suspicious User Agent",
-    description: "Bot-like behavior detected",
-    source: "User-Agent: HeadlessChrome",
-    blocked: 12,
-    time: "8 min ago",
-    status: "investigating",
-  },
-  {
-    id: 3,
-    severity: "low",
-    title: "Geolocation Mismatch",
-    description: "IP location differs from device GPS",
-    source: "Campaign: Electronics",
-    blocked: 5,
-    time: "15 min ago",
-    status: "resolved",
-  },
-  {
-    id: 4,
-    severity: "high",
-    title: "Rapid Click Pattern",
-    description: "Multiple clicks within 100ms",
-    source: "10.0.0.45",
-    blocked: 89,
-    time: "22 min ago",
-    status: "active",
-  },
-];
+    {
+      id: 1,
+      severity: "high",
+      title: "Click Farm Detected",
+      description: "Unusual traffic pattern from AS64512",
+      source: "192.168.1.0/24",
+      blocked: 247,
+      time: "3 min ago",
+      status: "active",
+    },
+    {
+      id: 2,
+      severity: "medium",
+      title: "Suspicious User Agent",
+      description: "Bot-like behavior detected",
+      source: "User-Agent: HeadlessChrome",
+      blocked: 12,
+      time: "8 min ago",
+      status: "investigating",
+    },
+    {
+      id: 3,
+      severity: "low",
+      title: "Geolocation Mismatch",
+      description: "IP location differs from device GPS",
+      source: "Campaign: Electronics",
+      blocked: 5,
+      time: "15 min ago",
+      status: "resolved",
+    },
+    {
+      id: 4,
+      severity: "high",
+      title: "Rapid Click Pattern",
+      description: "Multiple clicks within 100ms",
+      source: "10.0.0.45",
+      blocked: 89,
+      time: "22 min ago",
+      status: "active",
+    },
+  ];
 
 const severityColors: Record<"high" | "medium" | "low", string> = {
   high: "border-red-200 bg-red-50",
@@ -96,21 +96,19 @@ export function FraudAlerts() {
             <div className='flex items-start justify-between mb-2'>
               <div className='flex items-start space-x-3'>
                 <AlertTriangle
-                  className={`w-4 h-4 mt-0.5 ${
-                    alert.severity === "high"
+                  className={`w-4 h-4 mt-0.5 ${alert.severity === "high"
                       ? "text-red-500"
                       : alert.severity === "medium"
-                      ? "text-yellow-500"
-                      : "text-blue-500"
-                  }`}
+                        ? "text-yellow-500"
+                        : "text-blue-500"
+                    }`}
                 />
                 <div className='flex-1'>
                   <div className='flex items-center space-x-2 mb-1'>
                     <h4 className='text-sm font-medium text-slate-900'>{alert.title}</h4>
                     <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        severityBadges[alert.severity]
-                      }`}
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${severityBadges[alert.severity]
+                        }`}
                     >
                       {alert.severity.toUpperCase()}
                     </span>

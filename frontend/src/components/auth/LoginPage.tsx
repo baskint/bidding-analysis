@@ -1,4 +1,4 @@
-"use client";
+'use client';;
 
 // Example: Login component that supports both auth methods
 
@@ -119,7 +119,7 @@ export default function LoginPage() {
               type='text'
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200'
+              className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 text-gray-700'
               placeholder='Enter your username'
               required
               disabled={loading}
@@ -135,7 +135,7 @@ export default function LoginPage() {
               type='password'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200'
+              className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 text-gray-700'
               placeholder='Enter your password'
               required
               disabled={loading}

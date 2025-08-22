@@ -1,5 +1,5 @@
 // frontend/src/components/dashboard/BidChart.tsx
-"use client";
+'use client';;
 
 import {
   LineChart,

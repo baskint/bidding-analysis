@@ -1,5 +1,5 @@
 // frontend/src/app/dashboard/layout.tsx
-"use client";
+'use client';;
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";

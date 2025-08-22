@@ -1,5 +1,5 @@
 // src/contexts/AuthContext.tsx
-"use client";
+'use client';;
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
@@ -45,9 +45,9 @@ const AuthContext = createContext<AuthContextType>({
   signInWithGoogle: async () => false,
   login: async () => false,
   register: async () => false,
-  signOut: async () => {},
+  signOut: async () => { },
   error: null,
-  clearError: () => {},
+  clearError: () => { },
 });
 
 export const useAuth = () => {
