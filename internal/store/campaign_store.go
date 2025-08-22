@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
@@ -110,7 +111,7 @@ func (s *CampaignStore) GetFraudAlerts(startTime, endTime time.Time, severityThr
 // GetModelAccuracy retrieves ML model performance metrics
 func (s *CampaignStore) GetModelAccuracy(startTime, endTime time.Time, modelVersion string) (*models.ModelMetrics, error) {
 	query := `
-		SELECT 
+		SELECT
 			model_version,
 			AVG(prediction_accuracy) as avg_accuracy,
 			AVG(mean_absolute_error) as avg_mae,
@@ -226,6 +227,43 @@ func (s *CampaignStore) ListCampaigns(userID uuid.UUID) ([]*models.Campaign, err
 		)
 		if err != nil {
 			return nil, err
+		}
+		campaigns = append(campaigns, campaign)
+	}
+
+	return campaigns, rows.Err()
+}
+
+// GetUserCampaigns retrieves campaigns for a user with context support
+func (s *CampaignStore) GetUserCampaigns(ctx context.Context, userID string) ([]*models.Campaign, error) {
+	query := `
+		SELECT id, name, user_id, status, budget, daily_budget, target_cpa, created_at, updated_at
+		FROM campaigns
+		WHERE user_id = $1
+		ORDER BY created_at DESC`
+
+	rows, err := s.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var campaigns []*models.Campaign
+	for rows.Next() {
+		campaign := &models.Campaign{}
+		err := rows.Scan(
+			&campaign.ID,
+			&campaign.Name,
+			&campaign.UserID,
+			&campaign.Status,
+			&campaign.Budget,
+			&campaign.DailyBudget,
+			&campaign.TargetCPA,
+			&campaign.CreatedAt,
+			&campaign.UpdatedAt,
+		)
+		if err != nil {
+			continue // Skip invalid rows
 		}
 		campaigns = append(campaigns, campaign)
 	}

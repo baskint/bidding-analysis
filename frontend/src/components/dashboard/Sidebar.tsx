@@ -3,11 +3,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  BarChart3, 
-  Zap, 
-  Shield, 
-  Settings, 
+import {
+  BarChart3,
+  Zap,
+  Shield,
+  Settings,
   TrendingUp,
   Brain,
   AlertTriangle,
@@ -51,8 +51,8 @@ export function Sidebar() {
                 href={item.href}
                 className={`
                   flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200
-                  ${isActive 
-                    ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-l-4 border-blue-600' 
+                  ${isActive
+                    ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-l-4 border-blue-600'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }
                 `}

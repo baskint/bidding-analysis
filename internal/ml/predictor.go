@@ -44,10 +44,24 @@ func NewPredictor(apiKey string, bidStore *store.BidStore) *Predictor {
 	}
 }
 
+// PredictBid is the main interface method for bid prediction
+func (p *Predictor) PredictBid(ctx context.Context, req *models.BidRequest) (*models.BidResponse, error) {
+	return p.PredictOptimalBid(ctx, req)
+}
+
 // PredictOptimalBid predicts the optimal bid price for a request
 func (p *Predictor) PredictOptimalBid(ctx context.Context, req *models.BidRequest) (*models.BidResponse, error) {
-	// Get historical data for this campaign
-	historicalData, err := p.bidStore.GetRecentBids(req.CampaignID.String(), 100)
+	// Get historical data for this campaign - use the new GetSimilarBids method
+	query := &store.BidQuery{
+		CampaignID:      req.CampaignID,
+		SegmentCategory: req.UserSegment.Category,
+		Country:         req.GeoLocation.Country,
+		DeviceType:      req.DeviceInfo.DeviceType,
+		Since:           time.Now().Add(-7 * 24 * time.Hour), // Last 7 days
+		Limit:           100,
+	}
+
+	historicalData, err := p.bidStore.GetSimilarBids(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get historical data: %w", err)
 	}
@@ -71,19 +85,18 @@ func (p *Predictor) PredictOptimalBid(ctx context.Context, req *models.BidReques
 // AnalyzeCampaignPerformance provides campaign performance insights
 func (p *Predictor) AnalyzeCampaignPerformance(ctx context.Context, campaignID uuid.UUID, days int) (*CampaignAnalysis, error) {
 	startTime := time.Now().AddDate(0, 0, -days)
-	endTime := time.Now()
 
 	fmt.Printf("DEBUG ML: AnalyzeCampaignPerformance called with campaignID=%v, days=%d\n", campaignID, days)
-	fmt.Printf("DEBUG ML: Time range: %v to %v\n", startTime, endTime)
+	fmt.Printf("DEBUG ML: Time range: %v to now\n", startTime)
 
-	// Get recent bid data
-	bidData, err := p.bidStore.GetBidHistory(campaignID.String(), startTime, endTime, 1000, 0)
+	// Get recent bid data using the new method
+	bidData, err := p.bidStore.GetCampaignBids(ctx, campaignID, startTime)
 	if err != nil {
-		fmt.Printf("DEBUG ML: GetBidHistory error: %v\n", err)
+		fmt.Printf("DEBUG ML: GetCampaignBids error: %v\n", err)
 		return nil, fmt.Errorf("failed to get bid history: %w", err)
 	}
 
-	fmt.Printf("DEBUG ML: GetBidHistory returned %d events\n", len(bidData))
+	fmt.Printf("DEBUG ML: GetCampaignBids returned %d events\n", len(bidData))
 
 	if len(bidData) == 0 {
 		return &CampaignAnalysis{
@@ -151,9 +164,8 @@ func (p *Predictor) AnalyzeCampaignPerformance(ctx context.Context, campaignID u
 func (p *Predictor) DetectFraudPatterns(ctx context.Context, campaignID uuid.UUID) (*FraudDetectionResult, error) {
 	// Get recent data for analysis
 	startTime := time.Now().AddDate(0, 0, -7) // Last 7 days
-	endTime := time.Now()
 
-	bidData, err := p.bidStore.GetBidHistory(campaignID.String(), startTime, endTime, 500, 0)
+	bidData, err := p.bidStore.GetCampaignBids(ctx, campaignID, startTime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get bid data: %w", err)
 	}
@@ -391,3 +403,5 @@ type FraudDetectionResult struct {
 	DetectionMethod string    `json:"detection_method"`
 	Message         string    `json:"message,omitempty"`
 }
+
+// Types are now defined in open_ai.go to avoid duplication
