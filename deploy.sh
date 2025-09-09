@@ -24,7 +24,7 @@ REGION="us-central1"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
 
 echo "📦 Step 1: Building Docker image..."
-docker build -t ${IMAGE_NAME} .
+docker build --platform linux/amd64 -t ${IMAGE_NAME} .
 
 if [ $? -ne 0 ]; then
     echo "❌ Docker build failed!"
