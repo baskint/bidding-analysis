@@ -59,6 +59,33 @@ interface BidStreamData {
   country: string;
 }
 
+interface CampaignTargeting {
+  countries?: string[];
+  segment_categories?: string[];
+  device_types?: string[];
+}
+
+interface CampaignCreateRequest {
+  name: string;
+  budget: number;
+  start_date?: string; // ISO date
+  end_date?: string; // ISO date
+  targeting?: CampaignTargeting;
+  bidding_strategy?: 'manual' | 'auto' | 'target_cpa';
+  bid_amount?: number;
+  metadata?: Record<string, unknown>;
+}
+
+// interface CampaignCreateResponse {
+//   campaign_id: string;
+//   name: string;
+//   status: 'active' | 'paused' | 'archived';
+//   created_at: string;
+//   budget: number;
+//   targeting?: CampaignTargeting;
+//   bidding_strategy?: string;
+// }
+
 // Helper function to get auth token
 function getAuthToken(): string | null {
   if (typeof window !== 'undefined') {
@@ -159,7 +186,7 @@ export function useBiddingApi() {
     }
   }, []);
 
-  const createCampaign = useCallback(async (campaignData: any) => {
+  const createCampaign = useCallback(async (campaignData: CampaignCreateRequest) => {
     try {
       const result = await makeAuthenticatedRequest(`${API_BASE_URL}/trpc/campaign.create`, {
         method: 'POST',

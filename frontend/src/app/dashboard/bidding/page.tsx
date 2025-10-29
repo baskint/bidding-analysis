@@ -1,11 +1,18 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Zap, Play, Pause, Settings, TrendingUp, DollarSign } from 'lucide-react';
+import { useState } from "react";
+import {
+  Zap,
+  Play,
+  Pause,
+  Settings,
+  TrendingUp,
+  DollarSign,
+} from "lucide-react";
 
 export default function BiddingPage() {
   const [isLiveBidding, setIsLiveBidding] = useState(false);
-  const [biddingStrategy, setBiddingStrategy] = useState('aggressive');
+  const [biddingStrategy, setBiddingStrategy] = useState("aggressive");
 
   const toggleLiveBidding = () => {
     setIsLiveBidding(!isLiveBidding);
@@ -18,7 +25,7 @@ export default function BiddingPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center">
             <Zap className="w-7 h-7 mr-3 text-blue-600" />
-            Live Bidding
+            Live Bidding Test
           </h1>
           <p className="text-gray-600 mt-1">
             Real-time bid optimization with AI-powered predictions
@@ -28,18 +35,20 @@ export default function BiddingPage() {
         {/* Live Bidding Toggle */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium text-gray-700">Live Bidding</span>
+            <span className="text-sm font-medium text-gray-700">
+              Live Bidding
+            </span>
             <button
               onClick={toggleLiveBidding}
               className={`
                 relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                ${isLiveBidding ? 'bg-green-600' : 'bg-gray-200'}
+                ${isLiveBidding ? "bg-green-600" : "bg-gray-200"}
               `}
             >
               <span
                 className={`
                   inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                  ${isLiveBidding ? 'translate-x-6' : 'translate-x-1'}
+                  ${isLiveBidding ? "translate-x-6" : "translate-x-1"}
                 `}
               />
             </button>
@@ -112,17 +121,26 @@ export default function BiddingPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isLiveBidding ? 'bg-green-100' : 'bg-gray-100'
-                }`}>
-                <div className={`w-3 h-3 rounded-full ${isLiveBidding ? 'bg-green-600 animate-pulse' : 'bg-gray-400'
-                  }`} />
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  isLiveBidding ? "bg-green-100" : "bg-gray-100"
+                }`}
+              >
+                <div
+                  className={`w-3 h-3 rounded-full ${
+                    isLiveBidding ? "bg-green-600 animate-pulse" : "bg-gray-400"
+                  }`}
+                />
               </div>
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Status</p>
-              <p className={`text-2xl font-semibold ${isLiveBidding ? 'text-green-600' : 'text-gray-900'
-                }`}>
-                {isLiveBidding ? 'Live' : 'Paused'}
+              <p
+                className={`text-2xl font-semibold ${
+                  isLiveBidding ? "text-green-600" : "text-gray-900"
+                }`}
+              >
+                {isLiveBidding ? "Live" : "Paused"}
               </p>
             </div>
           </div>
@@ -133,31 +151,76 @@ export default function BiddingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Real-time Bid Stream</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Real-time Bid Stream
+            </h3>
 
             {isLiveBidding ? (
               <div className="space-y-3">
                 {/* Mock bid entries */}
                 {[
-                  { id: 1, campaign: 'Mobile App Campaign', bid: '$1.85', status: 'won', time: '2 sec ago' },
-                  { id: 2, campaign: 'E-commerce Sale', bid: '$2.34', status: 'lost', time: '5 sec ago' },
-                  { id: 3, campaign: 'Brand Awareness', bid: '$1.67', status: 'won', time: '8 sec ago' },
-                  { id: 4, campaign: 'Retargeting', bid: '$3.12', status: 'won', time: '12 sec ago' },
-                  { id: 5, campaign: 'Local Services', bid: '$0.95', status: 'lost', time: '15 sec ago' },
+                  {
+                    id: 1,
+                    campaign: "Mobile App Campaign",
+                    bid: "$1.85",
+                    status: "won",
+                    time: "2 sec ago",
+                  },
+                  {
+                    id: 2,
+                    campaign: "E-commerce Sale",
+                    bid: "$2.34",
+                    status: "lost",
+                    time: "5 sec ago",
+                  },
+                  {
+                    id: 3,
+                    campaign: "Brand Awareness",
+                    bid: "$1.67",
+                    status: "won",
+                    time: "8 sec ago",
+                  },
+                  {
+                    id: 4,
+                    campaign: "Retargeting",
+                    bid: "$3.12",
+                    status: "won",
+                    time: "12 sec ago",
+                  },
+                  {
+                    id: 5,
+                    campaign: "Local Services",
+                    bid: "$0.95",
+                    status: "lost",
+                    time: "15 sec ago",
+                  },
                 ].map((bid) => (
-                  <div key={bid.id} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+                  <div
+                    key={bid.id}
+                    className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg"
+                  >
                     <div className="flex items-center space-x-4">
-                      <div className={`w-3 h-3 rounded-full ${bid.status === 'won' ? 'bg-green-500' : 'bg-red-500'
-                        }`} />
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          bid.status === "won" ? "bg-green-500" : "bg-red-500"
+                        }`}
+                      />
                       <div>
-                        <p className="font-medium text-gray-900">{bid.campaign}</p>
+                        <p className="font-medium text-gray-900">
+                          {bid.campaign}
+                        </p>
                         <p className="text-sm text-gray-500">{bid.time}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-gray-900">{bid.bid}</p>
-                      <p className={`text-sm capitalize ${bid.status === 'won' ? 'text-green-600' : 'text-red-600'
-                        }`}>
+                      <p
+                        className={`text-sm capitalize ${
+                          bid.status === "won"
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
                         {bid.status}
                       </p>
                     </div>
@@ -168,7 +231,9 @@ export default function BiddingPage() {
               <div className="text-center py-12">
                 <Pause className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">Bidding is currently paused</p>
-                <p className="text-sm text-gray-400 mt-1">Click &quot;Start Bidding&quot; to begin real-time bidding</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Click &quot;Start Bidding&quot; to begin real-time bidding
+                </p>
               </div>
             )}
           </div>
