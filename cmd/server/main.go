@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/baskint/bidding-analysis/api/trpc"
 	"github.com/baskint/bidding-analysis/internal/config"
@@ -110,31 +109,24 @@ func startMinimalServer(port string) {
 
 // corsMiddleware handles CORS for all requests
 func corsMiddleware(next http.Handler) http.Handler {
+	allowedOrigins := map[string]bool{
+		"https://bidding-analysis.web.app":         true,
+		"https://bidding-analysis.firebaseapp.com": true,
+		"http://localhost:3000":                    true,
+		"http://localhost:3006":                    true,
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 
-		allowedOrigins := []string{
-			"http://localhost:3000",
-			"http://localhost:3006",
-		}
-
-		if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
-			prodOrigins := strings.Split(envOrigins, ",")
-			for _, prodOrigin := range prodOrigins {
-				allowedOrigins = append(allowedOrigins, strings.TrimSpace(prodOrigin))
-			}
-		}
-
-		for _, allowedOrigin := range allowedOrigins {
-			if origin == allowedOrigin {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-				break
-			}
+		// Check if origin is allowed
+		if allowedOrigins[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Length, Content-Type, Authorization, Accept, X-Requested-With")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 
 		if r.Method == "OPTIONS" {
