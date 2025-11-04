@@ -64,4 +64,4 @@ temp/
 # Firebase hosting files
 frontend/.firebase/hosting*
 
-frontend/.yarn./
+frontend/.yarn/
