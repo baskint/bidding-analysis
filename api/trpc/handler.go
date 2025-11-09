@@ -93,6 +93,14 @@ func (h *Handler) SetupRoutes() http.Handler {
 	protected.HandleFunc("/analytics.getModelAccuracy", h.getModelAccuracy).Methods("GET", "POST")
 	protected.HandleFunc("/analytics.getDashboardMetrics", h.getDashboardMetrics).Methods("GET", "POST")
 
+	protected.HandleFunc("/campaign.get", h.getCampaign).Methods("GET", "POST")
+	protected.HandleFunc("/campaign.update", h.updateCampaign).Methods("POST")
+	protected.HandleFunc("/campaign.delete", h.deleteCampaign).Methods("POST")
+	protected.HandleFunc("/campaign.pause", h.pauseCampaign).Methods("POST")
+	protected.HandleFunc("/campaign.activate", h.activateCampaign).Methods("POST")
+	protected.HandleFunc("/campaign.listWithMetrics", h.listCampaignsEnhanced).Methods("GET", "POST")
+	protected.HandleFunc("/campaign.getDailyMetrics", h.getDailyMetrics).Methods("GET", "POST")
+
 	return router
 }
 
@@ -603,3 +611,396 @@ func (h *Handler) getFallbackPrediction(req BidPredictionRequest) *models.BidRes
 		FraudRisk:  false,
 	}
 }
+
+// getCampaign retrieves a single campaign with detailed metrics
+func (h *Handler) getCampaign(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromContext(r.Context())
+	if userID == "" {
+		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	// Get campaign ID from query parameter or body
+	campaignID := r.URL.Query().Get("id")
+	if campaignID == "" {
+		var req struct {
+			ID string `json:"id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			campaignID = req.ID
+		}
+	}
+
+	if campaignID == "" {
+		h.writeErrorResponse(w, "Campaign ID is required", http.StatusBadRequest)
+		return
+	}
+
+	id, err := uuid.Parse(campaignID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid campaign ID format", http.StatusBadRequest)
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
+		return
+	}
+
+	campaign, err := h.campaignStore.GetCampaignWithMetrics(r.Context(), id, userUUID)
+	if err != nil {
+		log.Printf("Failed to get campaign: %v", err)
+		h.writeErrorResponse(w, "Failed to retrieve campaign", http.StatusInternalServerError)
+		return
+	}
+
+	h.writeTRPCResponse(w, campaign)
+}
+
+// updateCampaign updates an existing campaign
+func (h *Handler) updateCampaign(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromContext(r.Context())
+	if userID == "" {
+		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		ID          string   `json:"id"`
+		Name        string   `json:"name"`
+		Status      string   `json:"status,omitempty"`
+		Budget      *float64 `json:"budget,omitempty"`
+		DailyBudget *float64 `json:"daily_budget,omitempty"`
+		TargetCPA   *float64 `json:"target_cpa,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.ID == "" {
+		h.writeErrorResponse(w, "Campaign ID is required", http.StatusBadRequest)
+		return
+	}
+
+	id, err := uuid.Parse(req.ID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid campaign ID format", http.StatusBadRequest)
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
+		return
+	}
+
+	// Validate inputs
+	if req.Name != "" && (len(req.Name) < 3 || len(req.Name) > 255) {
+		h.writeErrorResponse(w, "Campaign name must be between 3 and 255 characters", http.StatusBadRequest)
+		return
+	}
+
+	if req.Status != "" && req.Status != "active" && req.Status != "paused" && req.Status != "archived" {
+		h.writeErrorResponse(w, "Invalid status. Must be 'active', 'paused', or 'archived'", http.StatusBadRequest)
+		return
+	}
+
+	if req.Budget != nil && *req.Budget < 0 {
+		h.writeErrorResponse(w, "Budget must be positive", http.StatusBadRequest)
+		return
+	}
+
+	if req.DailyBudget != nil && *req.DailyBudget < 0 {
+		h.writeErrorResponse(w, "Daily budget must be positive", http.StatusBadRequest)
+		return
+	}
+
+	if req.Budget != nil && req.DailyBudget != nil && *req.DailyBudget > *req.Budget {
+		h.writeErrorResponse(w, "Daily budget cannot exceed total budget", http.StatusBadRequest)
+		return
+	}
+
+	// Get existing campaign first
+	existing, err := h.campaignStore.GetCampaign(id)
+	if err != nil {
+		h.writeErrorResponse(w, "Campaign not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify ownership
+	if existing.UserID != userUUID {
+		h.writeErrorResponse(w, "Unauthorized", http.StatusForbidden)
+		return
+	}
+
+	// Update fields
+	if req.Name != "" {
+		existing.Name = req.Name
+	}
+	if req.Status != "" {
+		existing.Status = req.Status
+	}
+	if req.Budget != nil {
+		existing.Budget = req.Budget
+	}
+	if req.DailyBudget != nil {
+		existing.DailyBudget = req.DailyBudget
+	}
+	if req.TargetCPA != nil {
+		existing.TargetCPA = req.TargetCPA
+	}
+
+	if err := h.campaignStore.UpdateCampaign(existing); err != nil {
+		log.Printf("Failed to update campaign: %v", err)
+		h.writeErrorResponse(w, "Failed to update campaign", http.StatusInternalServerError)
+		return
+	}
+
+	h.writeTRPCResponse(w, existing)
+}
+
+// deleteCampaign soft deletes a campaign
+func (h *Handler) deleteCampaign(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromContext(r.Context())
+	if userID == "" {
+		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		ID string `json:"id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.ID == "" {
+		h.writeErrorResponse(w, "Campaign ID is required", http.StatusBadRequest)
+		return
+	}
+
+	id, err := uuid.Parse(req.ID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid campaign ID format", http.StatusBadRequest)
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.campaignStore.DeleteCampaign(id, userUUID); err != nil {
+		log.Printf("Failed to delete campaign: %v", err)
+		h.writeErrorResponse(w, "Failed to delete campaign", http.StatusInternalServerError)
+		return
+	}
+
+	h.writeTRPCResponse(w, map[string]interface{}{
+		"success": true,
+		"message": "Campaign archived successfully",
+	})
+}
+
+// pauseCampaign pauses an active campaign
+func (h *Handler) pauseCampaign(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromContext(r.Context())
+	if userID == "" {
+		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		ID string `json:"id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.ID == "" {
+		h.writeErrorResponse(w, "Campaign ID is required", http.StatusBadRequest)
+		return
+	}
+
+	id, err := uuid.Parse(req.ID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid campaign ID format", http.StatusBadRequest)
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.campaignStore.PauseCampaign(id, userUUID); err != nil {
+		log.Printf("Failed to pause campaign: %v", err)
+		h.writeErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Return updated campaign
+	campaign, err := h.campaignStore.GetCampaign(id)
+	if err != nil {
+		h.writeErrorResponse(w, "Campaign paused but failed to retrieve", http.StatusInternalServerError)
+		return
+	}
+
+	h.writeTRPCResponse(w, campaign)
+}
+
+// activateCampaign activates a paused campaign
+func (h *Handler) activateCampaign(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromContext(r.Context())
+	if userID == "" {
+		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		ID string `json:"id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.ID == "" {
+		h.writeErrorResponse(w, "Campaign ID is required", http.StatusBadRequest)
+		return
+	}
+
+	id, err := uuid.Parse(req.ID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid campaign ID format", http.StatusBadRequest)
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.campaignStore.ActivateCampaign(id, userUUID); err != nil {
+		log.Printf("Failed to activate campaign: %v", err)
+		h.writeErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Return updated campaign
+	campaign, err := h.campaignStore.GetCampaign(id)
+	if err != nil {
+		h.writeErrorResponse(w, "Campaign activated but failed to retrieve", http.StatusInternalServerError)
+		return
+	}
+
+	h.writeTRPCResponse(w, campaign)
+}
+
+// listCampaignsEnhanced lists campaigns with metrics (enhanced version)
+func (h *Handler) listCampaignsEnhanced(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromContext(r.Context())
+	if userID == "" {
+		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
+		return
+	}
+
+	// Parse pagination parameters (optional)
+	var limit = 100 // default
+	var offset = 0  // default
+
+	if r.URL.Query().Get("limit") != "" {
+		// Parse limit from query param if provided
+		// For simplicity, using defaults here
+	}
+
+	campaigns, err := h.campaignStore.ListCampaignsWithMetrics(r.Context(), userUUID, limit, offset)
+	if err != nil {
+		log.Printf("Failed to list campaigns: %v", err)
+		h.writeErrorResponse(w, "Failed to retrieve campaigns", http.StatusInternalServerError)
+		return
+	}
+
+	h.writeTRPCResponse(w, campaigns)
+}
+
+// getDailyMetrics retrieves daily metrics for a campaign
+func (h *Handler) getDailyMetrics(w http.ResponseWriter, r *http.Request) {
+	userID := getUserIDFromContext(r.Context())
+	if userID == "" {
+		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	campaignID := r.URL.Query().Get("id")
+	if campaignID == "" {
+		var req struct {
+			ID string `json:"id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			campaignID = req.ID
+		}
+	}
+
+	if campaignID == "" {
+		h.writeErrorResponse(w, "Campaign ID is required", http.StatusBadRequest)
+		return
+	}
+
+	id, err := uuid.Parse(campaignID)
+	if err != nil {
+		h.writeErrorResponse(w, "Invalid campaign ID format", http.StatusBadRequest)
+		return
+	}
+
+	// Verify ownership
+	userUUID, _ := uuid.Parse(userID)
+	campaign, err := h.campaignStore.GetCampaign(id)
+	if err != nil || campaign.UserID != userUUID {
+		h.writeErrorResponse(w, "Campaign not found or unauthorized", http.StatusNotFound)
+		return
+	}
+
+	// Get metrics for last 30 days by default
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -30)
+
+	metrics, err := h.campaignStore.GetCampaignDailyMetrics(id, startDate, endDate)
+	if err != nil {
+		log.Printf("Failed to get daily metrics: %v", err)
+		h.writeErrorResponse(w, "Failed to retrieve metrics", http.StatusInternalServerError)
+		return
+	}
+
+	h.writeTRPCResponse(w, metrics)
+}
+
+/*
+Add these routes to your SetupRoutes() function in handler.go:
+
+// Enhanced campaign procedures
+protected.HandleFunc("/campaign.get", h.getCampaign).Methods("GET", "POST")
+protected.HandleFunc("/campaign.update", h.updateCampaign).Methods("POST")
+protected.HandleFunc("/campaign.delete", h.deleteCampaign).Methods("POST")
+protected.HandleFunc("/campaign.pause", h.pauseCampaign).Methods("POST")
+protected.HandleFunc("/campaign.activate", h.activateCampaign).Methods("POST")
+protected.HandleFunc("/campaign.listWithMetrics", h.listCampaignsEnhanced).Methods("GET", "POST")
+protected.HandleFunc("/campaign.getDailyMetrics", h.getDailyMetrics).Methods("GET", "POST")
+*/

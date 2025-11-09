@@ -91,3 +91,67 @@ type User struct {
 	CreatedAt    time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt    time.Time `db:"updated_at" json:"updated_at"`
 }
+
+// CampaignSummary represents a campaign with summary metrics for list view
+type CampaignSummary struct {
+	Campaign
+	TotalBids         int64      `json:"total_bids"`
+	WonBids           int64      `json:"won_bids"`
+	Conversions       int64      `json:"conversions"`
+	TotalSpend        float64    `json:"total_spend"`
+	WinRate           float64    `json:"win_rate"`
+	ConversionRate    float64    `json:"conversion_rate"`
+	AverageBid        float64    `json:"average_bid"`
+	CostPerConversion float64    `json:"cost_per_conversion"`
+	LastActivityAt    *time.Time `json:"last_activity_at,omitempty"`
+}
+
+// CampaignDetail represents detailed campaign view with extended metrics
+type CampaignDetail struct {
+	Campaign
+	CampaignStats
+	DailyMetrics    []*DailyMetric `json:"daily_metrics,omitempty"`
+	TopKeywords     []KeywordStat  `json:"top_keywords,omitempty"`
+	DeviceBreakdown []DeviceStat   `json:"device_breakdown,omitempty"`
+	GeoBreakdown    []GeoStat      `json:"geo_breakdown,omitempty"`
+	RecentBids      []*BidEvent    `json:"recent_bids,omitempty"`
+}
+
+// DailyMetric represents daily performance metrics
+type DailyMetric struct {
+	Date           time.Time `json:"date"`
+	TotalBids      int       `json:"total_bids"`
+	WonBids        int       `json:"won_bids"`
+	Conversions    int       `json:"conversions"`
+	TotalSpend     float64   `json:"total_spend"`
+	WinRate        float64   `json:"win_rate"`
+	ConversionRate float64   `json:"conversion_rate"`
+}
+
+// KeywordStat represents keyword performance statistics
+type KeywordStat struct {
+	Keyword     string  `json:"keyword"`
+	Bids        int     `json:"bids"`
+	WonBids     int     `json:"won_bids"`
+	Conversions int     `json:"conversions"`
+	Spend       float64 `json:"spend"`
+	WinRate     float64 `json:"win_rate"`
+}
+
+// DeviceStat represents device type performance
+type DeviceStat struct {
+	DeviceType  string  `json:"device_type"`
+	Bids        int     `json:"bids"`
+	WonBids     int     `json:"won_bids"`
+	Conversions int     `json:"conversions"`
+	WinRate     float64 `json:"win_rate"`
+}
+
+// GeoStat represents geographic performance
+type GeoStat struct {
+	Country     string  `json:"country"`
+	Bids        int     `json:"bids"`
+	WonBids     int     `json:"won_bids"`
+	Conversions int     `json:"conversions"`
+	WinRate     float64 `json:"win_rate"`
+}

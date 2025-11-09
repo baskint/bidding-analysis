@@ -45,15 +45,6 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// authMiddleware handles authentication (placeholder for future implementation)
-func authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// TODO: Implement JWT authentication
-		// For now, just pass through
-		next.ServeHTTP(w, r)
-	})
-}
-
 // authMiddleware validates JWT tokens and adds user info to request context
 func (h *Handler) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -89,8 +80,8 @@ func (h *Handler) authMiddleware(next http.Handler) http.Handler {
 
 		// Add user info to context
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, "userID", claims.UserID)
-		ctx = context.WithValue(ctx, "username", claims.Username)
+		ctx = context.WithValue(ctx, userIDKey, claims.UserID) // ✅ Correct
+		ctx = context.WithValue(ctx, usernameKey, claims.Username)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
