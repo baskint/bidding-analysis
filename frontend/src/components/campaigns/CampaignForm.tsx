@@ -1,7 +1,6 @@
-// frontend/src/components/campaigns/CampaignForm.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createCampaign,
@@ -12,21 +11,21 @@ import {
 } from "@/lib/api/campaigns";
 
 interface CampaignFormProps {
-  campaign?: Campaign;
+  initialCampaign?: Campaign;
   mode: "create" | "edit";
 }
 
-export function CampaignForm({ campaign, mode }: CampaignFormProps) {
+export function CampaignForm({ initialCampaign, mode }: CampaignFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    name: campaign?.name || "",
-    status: campaign?.status || "active",
-    budget: campaign?.budget?.toString() || "",
-    daily_budget: campaign?.daily_budget?.toString() || "",
-    target_cpa: campaign?.target_cpa?.toString() || "",
+    name: initialCampaign?.name || "",
+    status: initialCampaign?.status || "active",
+    budget: initialCampaign?.budget?.toString() || "",
+    daily_budget: initialCampaign?.daily_budget?.toString() || "",
+    target_cpa: initialCampaign?.target_cpa?.toString() || "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -89,9 +88,9 @@ export function CampaignForm({ campaign, mode }: CampaignFormProps) {
         };
         const result = await createCampaign(data);
         router.push(`/dashboard/campaigns/${result.id}`);
-      } else if (campaign) {
+      } else if (initialCampaign) {
         const data: UpdateCampaignInput = {
-          id: campaign.id,
+          id: initialCampaign.id,
           name: formData.name,
           status: formData.status as "active" | "paused" | "archived",
           budget: formData.budget ? parseFloat(formData.budget) : undefined,
@@ -103,10 +102,13 @@ export function CampaignForm({ campaign, mode }: CampaignFormProps) {
             : undefined,
         };
         await updateCampaign(data);
-        router.push(`/dashboard/campaigns/${campaign.id}`);
+        router.push(`/dashboard/campaigns/${initialCampaign?.id}`);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to save campaign");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error
+        ? err.message
+        : "Failed to save campaign";
+      setError(errorMessage);
       console.error("Failed to save campaign:", err);
     } finally {
       setLoading(false);
@@ -151,9 +153,8 @@ export function CampaignForm({ campaign, mode }: CampaignFormProps) {
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              errors.name ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.name ? "border-red-500" : "border-gray-300"
+              }`}
             placeholder="e.g., Summer Sale 2024"
             required
           />
@@ -201,9 +202,8 @@ export function CampaignForm({ campaign, mode }: CampaignFormProps) {
               name="budget"
               value={formData.budget}
               onChange={handleChange}
-              className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.budget ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.budget ? "border-red-500" : "border-gray-300"
+                }`}
               placeholder="10000.00"
               step="0.01"
               min="0"
@@ -233,9 +233,8 @@ export function CampaignForm({ campaign, mode }: CampaignFormProps) {
               name="daily_budget"
               value={formData.daily_budget}
               onChange={handleChange}
-              className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.daily_budget ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.daily_budget ? "border-red-500" : "border-gray-300"
+                }`}
               placeholder="500.00"
               step="0.01"
               min="0"
@@ -265,9 +264,8 @@ export function CampaignForm({ campaign, mode }: CampaignFormProps) {
               name="target_cpa"
               value={formData.target_cpa}
               onChange={handleChange}
-              className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.target_cpa ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.target_cpa ? "border-red-500" : "border-gray-300"
+                }`}
               placeholder="25.00"
               step="0.01"
               min="0"

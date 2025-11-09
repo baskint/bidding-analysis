@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   TrendingUp,
@@ -25,7 +24,6 @@ import {
 } from "@/lib/api/campaigns";
 
 export default function CampaignsPage() {
-  const router = useRouter();
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -179,16 +177,34 @@ export default function CampaignsPage() {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="all">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="paused">Paused</option>
-          <option value="archived">Archived</option>
-        </select>
+        {(() => {
+          type StatusFilter = "all" | "active" | "paused" | "archived";
+          interface StatusOption {
+            value: StatusFilter;
+            label: string;
+          }
+
+          const statusOptions: StatusOption[] = [
+            { value: "all", label: "All Statuses" },
+            { value: "active", label: "Active" },
+            { value: "paused", label: "Paused" },
+            { value: "archived", label: "Archived" },
+          ];
+
+          return (
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {statusOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          );
+        })()}
       </div>
 
       {/* Campaign Grid */}
