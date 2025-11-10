@@ -83,7 +83,7 @@ export function CampaignEditor({ campaignId }: CampaignEditorProps) {
     <div className="p-8">
       <div className="mb-8">
         <Link
-          href={`/dashboard/campaigns/${campaign.id}`}
+          href={`/dashboard/campaigns`}
           className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4 transition duration-150"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />

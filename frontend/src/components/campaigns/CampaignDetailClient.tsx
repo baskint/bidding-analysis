@@ -191,7 +191,7 @@ export default function CampaignDetailClient({
           </div>
           <div className="flex gap-2">
             <Link
-              href={`/dashboard/campaigns/${campaign.id}/edit`}
+              href={`/dashboard/campaigns/edit?id=${campaign.id}`}
               className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <Edit className="w-4 h-4 mr-2" />

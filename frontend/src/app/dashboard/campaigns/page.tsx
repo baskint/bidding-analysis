@@ -330,7 +330,7 @@ export default function CampaignsPage() {
               {/* Actions */}
               <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2">
                 <Link
-                  href={`/dashboard/campaigns/${campaign.id}/edit`}
+                  href={`/dashboard/campaigns/edit?id=${campaign.id}`}
                   className="flex-1 flex items-center justify-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-white transition-colors"
                 >
                   <Edit className="w-4 h-4 mr-1" />
