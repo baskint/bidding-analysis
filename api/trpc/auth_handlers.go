@@ -104,7 +104,11 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) getMe(w http.ResponseWriter, r *http.Request) {
 	// Get user from context (set by auth middleware)
-	userID := r.Context().Value("userID").(string)
+	userID := getUserIDFromContext(r.Context())
+	if userID == "" {
+		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
 
 	user, err := h.userStore.GetByID(userID)
 	if err != nil {
