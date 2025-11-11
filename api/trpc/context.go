@@ -4,28 +4,38 @@ import (
 	"context"
 )
 
-type contextKey string
+// ContextKey is a type used for context keys to prevent collisions with other packages.
+type ContextKey string
 
 const (
-	userIDKey   contextKey = "user_id"
-	usernameKey contextKey = "username"
+	// Exported context keys (start with a capital letter) that are used by middleware and handlers.
+	ContextKeyUserID   ContextKey = "user_id"
+	ContextKeyUsername ContextKey = "username"
 )
 
-func contextWithUser(ctx context.Context, userID, username string) context.Context {
-	ctx = context.WithValue(ctx, userIDKey, userID)
-	ctx = context.WithValue(ctx, usernameKey, username)
+// ContextWithUser adds the UserID and Username to the provided context.
+// Exported to be used by the authMiddleware.
+func ContextWithUser(ctx context.Context, userID, username string) context.Context {
+	ctx = context.WithValue(ctx, ContextKeyUserID, userID)
+	ctx = context.WithValue(ctx, ContextKeyUsername, username)
 	return ctx
 }
 
-func getUserIDFromContext(ctx context.Context) string {
-	if userID, ok := ctx.Value(userIDKey).(string); ok {
+// GetUserIDFromContext safely retrieves the UserID from the context.
+// Exported to be used by analytics handlers.
+func GetUserIDFromContext(ctx context.Context) string {
+	// CRITICAL FIX: Use the exported constant ContextKeyUserID
+	if userID, ok := ctx.Value(ContextKeyUserID).(string); ok {
 		return userID
 	}
 	return ""
 }
 
-func getUsernameFromContext(ctx context.Context) string {
-	if username, ok := ctx.Value(usernameKey).(string); ok {
+// GetUsernameFromContext safely retrieves the Username from the context.
+// Exported to be used by handlers like getMe.
+func GetUsernameFromContext(ctx context.Context) string {
+	// CRITICAL FIX: Use the exported constant ContextKeyUsername
+	if username, ok := ctx.Value(ContextKeyUsername).(string); ok {
 		return username
 	}
 	return ""

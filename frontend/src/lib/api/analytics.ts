@@ -64,12 +64,12 @@ export interface DeviceBreakdown {
 export interface GeoBreakdown {
   country: string;
   region: string;
-  total_bids: number;
-  won_bids: number;
+  totalBids: number;
+  wonBids: number;
   conversions: number;
   spend: number;
-  win_rate: number;
-  conversion_rate: number;
+  winRate: number;
+  conversionRate: number;
 }
 
 export interface HourlyPerformance {

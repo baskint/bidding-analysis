@@ -80,8 +80,10 @@ func (h *Handler) authMiddleware(next http.Handler) http.Handler {
 
 		// Add user info to context
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, userIDKey, claims.UserID) // ✅ Correct
-		ctx = context.WithValue(ctx, usernameKey, claims.Username)
+		// *** CRITICAL FIX: Use the exported constants ***
+		ctx = context.WithValue(ctx, ContextKeyUserID, claims.UserID)
+		ctx = context.WithValue(ctx, ContextKeyUsername, claims.Username)
+		// *** END CRITICAL FIX ***
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

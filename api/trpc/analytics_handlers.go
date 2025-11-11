@@ -1,8 +1,10 @@
 package trpc
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -10,104 +12,27 @@ import (
 	"github.com/google/uuid"
 )
 
-// PerformanceMetrics represents overall performance metrics
-type PerformanceMetrics struct {
-	TotalBids       int64   `json:"total_bids"`
-	WonBids         int64   `json:"won_bids"`
-	Conversions     int64   `json:"conversions"`
-	TotalSpend      float64 `json:"total_spend"`
-	Revenue         float64 `json:"revenue"`
-	WinRate         float64 `json:"win_rate"`
-	ConversionRate  float64 `json:"conversion_rate"`
-	AverageBid      float64 `json:"average_bid"`
-	CPA             float64 `json:"cpa"`  // Cost Per Acquisition
-	ROAS            float64 `json:"roas"` // Return On Ad Spend
-	FraudDetections int64   `json:"fraud_detections"`
-}
+// NOTE: All struct definitions (PerformanceMetrics, KeywordAnalysis, etc.)
+// have been removed from this file to resolve the "redeclared" compilation
+// error. They are now assumed to be defined in a shared file like types.go
+// within the 'trpc' package, as suggested by your error logs.
 
-// KeywordAnalysis represents keyword performance data
-type KeywordAnalysis struct {
-	Keyword        string  `json:"keyword"`
-	TotalBids      int64   `json:"total_bids"`
-	WonBids        int64   `json:"won_bids"`
-	Conversions    int64   `json:"conversions"`
-	Spend          float64 `json:"spend"`
-	Revenue        float64 `json:"revenue"`
-	WinRate        float64 `json:"win_rate"`
-	ConversionRate float64 `json:"conversion_rate"`
-	CPA            float64 `json:"cpa"`
-	ROAS           float64 `json:"roas"`
-}
+// (Handler, GetUserIDFromContext, writeErrorResponse, writeTRPCResponse are assumed to be defined elsewhere)
 
-// DeviceBreakdown represents device-specific performance
-type DeviceBreakdown struct {
-	DeviceType     string  `json:"device_type"`
-	TotalBids      int64   `json:"total_bids"`
-	WonBids        int64   `json:"won_bids"`
-	Conversions    int64   `json:"conversions"`
-	Spend          float64 `json:"spend"`
-	WinRate        float64 `json:"win_rate"`
-	ConversionRate float64 `json:"conversion_rate"`
-	AverageBid     float64 `json:"average_bid"`
-}
-
-// GeoBreakdown represents geographic performance
-type GeoBreakdown struct {
-	Country        string  `json:"country"`
-	Region         string  `json:"region"`
-	TotalBids      int64   `json:"total_bids"`
-	WonBids        int64   `json:"won_bids"`
-	Conversions    int64   `json:"conversions"`
-	Spend          float64 `json:"spend"`
-	WinRate        float64 `json:"win_rate"`
-	ConversionRate float64 `json:"conversion_rate"`
-}
-
-// HourlyPerformance represents time-based performance
-type HourlyPerformance struct {
-	Hour           int     `json:"hour"`
-	TotalBids      int64   `json:"total_bids"`
-	WonBids        int64   `json:"won_bids"`
-	Conversions    int64   `json:"conversions"`
-	Spend          float64 `json:"spend"`
-	WinRate        float64 `json:"win_rate"`
-	ConversionRate float64 `json:"conversion_rate"`
-	AverageBid     float64 `json:"average_bid"`
-}
-
-// DailyTrend represents daily performance trends
-type DailyTrend struct {
-	Date           string  `json:"date"`
-	TotalBids      int64   `json:"total_bids"`
-	WonBids        int64   `json:"won_bids"`
-	Conversions    int64   `json:"conversions"`
-	Spend          float64 `json:"spend"`
-	Revenue        float64 `json:"revenue"`
-	WinRate        float64 `json:"win_rate"`
-	ConversionRate float64 `json:"conversion_rate"`
-	CPA            float64 `json:"cpa"`
-}
-
-// CompetitiveAnalysis represents competitive insights
-type CompetitiveAnalysis struct {
-	SegmentCategory      string  `json:"segment_category"`
-	OurWinRate           float64 `json:"our_win_rate"`
-	MarketAverageBid     float64 `json:"market_average_bid"`
-	OurAverageBid        float64 `json:"our_average_bid"`
-	AverageFloorPrice    float64 `json:"average_floor_price"`
-	CompetitionIntensity float64 `json:"competition_intensity"` // Bid/Floor ratio
-	TotalOpportunities   int64   `json:"total_opportunities"`
-}
+// --- Handlers with Context Safety Applied ---
 
 // getPerformanceOverview returns overall performance metrics
 func (h *Handler) getPerformanceOverview(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
 	}
 
-	// Parse date range from query or use defaults
+	// Setup context with a 60 second database timeout
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
+
 	var req struct {
 		StartDate string `json:"start_date"`
 		EndDate   string `json:"end_date"`
@@ -116,7 +41,6 @@ func (h *Handler) getPerformanceOverview(w http.ResponseWriter, r *http.Request)
 
 	startDate, endDate := parseDateRange(req.StartDate, req.EndDate)
 
-	// Query to get overall performance metrics
 	query := `
 		SELECT
 			COALESCE(COUNT(*), 0) as total_bids,
@@ -143,7 +67,8 @@ func (h *Handler) getPerformanceOverview(w http.ResponseWriter, r *http.Request)
 	`
 
 	var metrics PerformanceMetrics
-	err := h.bidStore.DB().QueryRow(query, userID, startDate, endDate).Scan(
+
+	err := h.bidStore.DB().QueryRowContext(ctx, query, userID, startDate, endDate).Scan(
 		&metrics.TotalBids,
 		&metrics.WonBids,
 		&metrics.Conversions,
@@ -155,12 +80,16 @@ func (h *Handler) getPerformanceOverview(w http.ResponseWriter, r *http.Request)
 	)
 
 	if err != nil {
-		log.Printf("Failed to get performance overview: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve performance metrics", http.StatusInternalServerError)
+		if errors.Is(err, context.DeadlineExceeded) {
+			log.Printf("Failed to get performance overview: Query timed out after 60s")
+			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout) // 504
+		} else {
+			log.Printf("Failed to get performance overview: %v", err)
+			h.writeErrorResponse(w, "Failed to retrieve performance metrics", http.StatusInternalServerError) // 500
+		}
 		return
 	}
 
-	// Calculate derived metrics
 	if metrics.Conversions > 0 {
 		metrics.CPA = metrics.TotalSpend / float64(metrics.Conversions)
 	}
@@ -173,16 +102,14 @@ func (h *Handler) getPerformanceOverview(w http.ResponseWriter, r *http.Request)
 
 // getKeywordAnalysis returns keyword performance breakdown
 func (h *Handler) getKeywordAnalysis(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
-		log.Println("DEBUG: UserID is empty, unauthorized request.")
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
 	}
 
-	// We do NOT parse to UUID here because bid_events.user_id is VARCHAR,
-	// and passing a Go UUID type to a VARCHAR column caused the 'syntax error at or near ".."'
-	log.Printf("DEBUG: Processing getKeywordAnalysis for UserID: %s", userID)
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
 
 	var req struct {
 		StartDate string `json:"start_date"`
@@ -196,8 +123,6 @@ func (h *Handler) getKeywordAnalysis(w http.ResponseWriter, r *http.Request) {
 	if req.Limit > 0 && req.Limit <= 100 {
 		limit = req.Limit
 	}
-
-	log.Printf("DEBUG: Params - StartDate: %v, EndDate: %v, Limit: %d", startDate, endDate, limit)
 
 	query := `
 		WITH keyword_stats AS (
@@ -230,17 +155,21 @@ func (h *Handler) getKeywordAnalysis(w http.ResponseWriter, r *http.Request) {
 		LIMIT $4
 	`
 
-	// Pass the string userID directly. $1=userID, $2=startDate, $3=endDate, $4=limit
-	rows, err := h.bidStore.DB().Query(query, userID, startDate, endDate, limit)
+	// Using QueryContext
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate, limit)
 	if err != nil {
-		log.Printf("DEBUG ERROR: Failed to execute keyword query: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve keyword analysis", http.StatusInternalServerError)
+		if errors.Is(err, context.DeadlineExceeded) {
+			log.Printf("Failed to get keyword analysis: Query timed out after 60s")
+			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
+		} else {
+			log.Printf("Failed to execute keyword query: %v", err)
+			h.writeErrorResponse(w, "Failed to retrieve keyword analysis", http.StatusInternalServerError)
+		}
 		return
 	}
 	defer rows.Close()
 
 	var keywords []KeywordAnalysis
-	rowsScanned := 0
 	for rows.Next() {
 		var kw KeywordAnalysis
 		err := rows.Scan(
@@ -256,17 +185,14 @@ func (h *Handler) getKeywordAnalysis(w http.ResponseWriter, r *http.Request) {
 			&kw.ROAS,
 		)
 		if err != nil {
-			log.Printf("DEBUG ERROR: Failed to scan row for keyword analysis: %v", err)
+			log.Printf("Failed to scan row for keyword analysis: %v", err)
 			continue
 		}
 		keywords = append(keywords, kw)
-		rowsScanned++
 	}
 
-	log.Printf("DEBUG: Query completed. Successfully scanned %d rows.", rowsScanned)
-
 	if err := rows.Err(); err != nil {
-		log.Printf("DEBUG ERROR: Error after row iteration: %v", err)
+		log.Printf("Error after row iteration for keyword analysis: %v", err)
 	}
 
 	h.writeTRPCResponse(w, keywords)
@@ -274,13 +200,14 @@ func (h *Handler) getKeywordAnalysis(w http.ResponseWriter, r *http.Request) {
 
 // getDeviceBreakdown returns device-specific performance
 func (h *Handler) getDeviceBreakdown(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
-		log.Println("DEBUG: DeviceBreakdown: UserID is empty, unauthorized request.")
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
 	}
-	log.Printf("DEBUG: DeviceBreakdown: Processing for UserID: %s", userID)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
 
 	var req struct {
 		StartDate string `json:"start_date"`
@@ -289,36 +216,38 @@ func (h *Handler) getDeviceBreakdown(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&req)
 
 	startDate, endDate := parseDateRange(req.StartDate, req.EndDate)
-	log.Printf("DEBUG: DeviceBreakdown: Params - StartDate: %v, EndDate: %v", startDate, endDate)
 
 	query := `
-        SELECT 
-            device_type,
-            COUNT(*) as total_bids,
-            SUM(CASE WHEN won THEN 1 ELSE 0 END) as won_bids,
-            SUM(CASE WHEN converted THEN 1 ELSE 0 END) as conversions,
-            SUM(CASE WHEN won THEN bid_price ELSE 0 END) as spend,
-            -- ... (rest of calculated metrics)
-            CASE WHEN COUNT(*) > 0 THEN CAST(SUM(CASE WHEN won THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) ELSE 0 END as win_rate,
-            CASE WHEN SUM(CASE WHEN won THEN 1 ELSE 0 END) > 0 THEN CAST(SUM(CASE WHEN converted THEN 1 ELSE 0 END) AS FLOAT) / SUM(CASE WHEN won THEN 1 ELSE 0 END) ELSE 0 END as conversion_rate,
-            CASE WHEN COUNT(*) > 0 THEN SUM(bid_price) / COUNT(*) ELSE 0 END as average_bid
-        FROM bid_events
-        WHERE user_id = $1 
-            AND timestamp BETWEEN $2 AND $3
-        GROUP BY device_type
-        ORDER BY total_bids DESC
-    `
+		SELECT 
+			device_type,
+			COUNT(*) as total_bids,
+			SUM(CASE WHEN won THEN 1 ELSE 0 END) as won_bids,
+			SUM(CASE WHEN converted THEN 1 ELSE 0 END) as conversions,
+			SUM(CASE WHEN won THEN bid_price ELSE 0 END) as spend,
+			CASE WHEN COUNT(*) > 0 THEN CAST(SUM(CASE WHEN won THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) ELSE 0 END as win_rate,
+			CASE WHEN SUM(CASE WHEN won THEN 1 ELSE 0 END) > 0 THEN CAST(SUM(CASE WHEN converted THEN 1 ELSE 0 END) AS FLOAT) / SUM(CASE WHEN won THEN 1 ELSE 0 END) ELSE 0 END as conversion_rate,
+			CASE WHEN COUNT(*) > 0 THEN SUM(bid_price) / COUNT(*) ELSE 0 END as average_bid
+		FROM bid_events
+		WHERE user_id = $1 
+			AND timestamp BETWEEN $2 AND $3
+		GROUP BY device_type
+		ORDER BY total_bids DESC
+	`
 
-	rows, err := h.bidStore.DB().Query(query, userID, startDate, endDate)
+	// Using QueryContext
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate)
 	if err != nil {
-		log.Printf("DEBUG ERROR: Failed to get device breakdown: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve device breakdown", http.StatusInternalServerError)
+		if errors.Is(err, context.DeadlineExceeded) {
+			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
+		} else {
+			log.Printf("Failed to get device breakdown: %v", err)
+			h.writeErrorResponse(w, "Failed to retrieve device breakdown", http.StatusInternalServerError)
+		}
 		return
 	}
 	defer rows.Close()
 
 	var devices []DeviceBreakdown
-	rowsScanned := 0
 	for rows.Next() {
 		var device DeviceBreakdown
 		err := rows.Scan(
@@ -332,28 +261,25 @@ func (h *Handler) getDeviceBreakdown(w http.ResponseWriter, r *http.Request) {
 			&device.AverageBid,
 		)
 		if err != nil {
-			log.Printf("DEBUG ERROR: DeviceBreakdown: Failed to scan row: %v", err)
+			log.Printf("DeviceBreakdown: Failed to scan row: %v", err)
 			continue
 		}
 		devices = append(devices, device)
-		rowsScanned++
 	}
-
-	log.Printf("DEBUG: DeviceBreakdown: Query completed. Successfully scanned %d rows.", rowsScanned)
 
 	h.writeTRPCResponse(w, devices)
 }
 
 // getGeoBreakdown returns geographic performance
-// getGeoBreakdown returns geographic performance
 func (h *Handler) getGeoBreakdown(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
-		log.Println("DEBUG: GeoBreakdown: UserID is empty, unauthorized request.")
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
 	}
-	log.Printf("DEBUG: GeoBreakdown: Processing for UserID: %s", userID)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
 
 	var req struct {
 		StartDate string `json:"start_date"`
@@ -367,12 +293,11 @@ func (h *Handler) getGeoBreakdown(w http.ResponseWriter, r *http.Request) {
 	if req.Limit > 0 && req.Limit <= 100 {
 		limit = req.Limit
 	}
-	log.Printf("DEBUG: GeoBreakdown: Params - StartDate: %v, EndDate: %v, Limit: %d", startDate, endDate, limit)
 
 	query := `
 		SELECT 
-			country,
-			region,
+			COALESCE(country, 'Unknown') AS country,
+			COALESCE(region, 'Unknown') AS region,
 			COUNT(*) as total_bids,
 			SUM(CASE WHEN won THEN 1 ELSE 0 END) as won_bids,
 			SUM(CASE WHEN converted THEN 1 ELSE 0 END) as conversions,
@@ -387,17 +312,20 @@ func (h *Handler) getGeoBreakdown(w http.ResponseWriter, r *http.Request) {
 		LIMIT $4
 	`
 
-	// Pass the string userID directly for $1.
-	rows, err := h.bidStore.DB().Query(query, userID, startDate, endDate, limit)
+	// Using QueryContext
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate, limit)
 	if err != nil {
-		log.Printf("DEBUG ERROR: Failed to get geo breakdown: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve geographic breakdown", http.StatusInternalServerError)
+		if errors.Is(err, context.DeadlineExceeded) {
+			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
+		} else {
+			log.Printf("Failed to get geo breakdown: %v", err)
+			h.writeErrorResponse(w, "Failed to retrieve geographic breakdown", http.StatusInternalServerError)
+		}
 		return
 	}
 	defer rows.Close()
 
 	var geos []GeoBreakdown
-	rowsScanned := 0
 	for rows.Next() {
 		var geo GeoBreakdown
 		err := rows.Scan(
@@ -411,25 +339,25 @@ func (h *Handler) getGeoBreakdown(w http.ResponseWriter, r *http.Request) {
 			&geo.ConversionRate,
 		)
 		if err != nil {
-			log.Printf("DEBUG ERROR: GeoBreakdown: Failed to scan row: %v", err)
+			log.Printf("GeoBreakdown: Failed to scan row: %v", err)
 			continue
 		}
 		geos = append(geos, geo)
-		rowsScanned++
 	}
-
-	log.Printf("DEBUG: GeoBreakdown: Query completed. Successfully scanned %d rows.", rowsScanned)
 
 	h.writeTRPCResponse(w, geos)
 }
 
 // getHourlyPerformance returns time-based performance by hour
 func (h *Handler) getHourlyPerformance(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
 	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
 
 	var req struct {
 		StartDate string `json:"start_date"`
@@ -456,10 +384,15 @@ func (h *Handler) getHourlyPerformance(w http.ResponseWriter, r *http.Request) {
 		ORDER BY hour
 	`
 
-	rows, err := h.bidStore.DB().Query(query, userID, startDate, endDate)
+	// Using QueryContext
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate)
 	if err != nil {
-		log.Printf("Failed to get hourly performance: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve hourly performance", http.StatusInternalServerError)
+		if errors.Is(err, context.DeadlineExceeded) {
+			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
+		} else {
+			log.Printf("Failed to get hourly performance: %v", err)
+			h.writeErrorResponse(w, "Failed to retrieve hourly performance", http.StatusInternalServerError)
+		}
 		return
 	}
 	defer rows.Close()
@@ -479,6 +412,7 @@ func (h *Handler) getHourlyPerformance(w http.ResponseWriter, r *http.Request) {
 			&h.AverageBid,
 		)
 		if err != nil {
+			log.Printf("HourlyPerformance: Failed to scan row: %v", err)
 			continue
 		}
 		h.Hour = int(hourFloat)
@@ -490,11 +424,14 @@ func (h *Handler) getHourlyPerformance(w http.ResponseWriter, r *http.Request) {
 
 // getDailyTrends returns daily performance trends
 func (h *Handler) getDailyTrends(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
 	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
 
 	var req struct {
 		StartDate string `json:"start_date"`
@@ -522,10 +459,15 @@ func (h *Handler) getDailyTrends(w http.ResponseWriter, r *http.Request) {
 		ORDER BY date
 	`
 
-	rows, err := h.bidStore.DB().Query(query, userID, startDate, endDate)
+	// Using QueryContext
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate)
 	if err != nil {
-		log.Printf("Failed to get daily trends: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve daily trends", http.StatusInternalServerError)
+		if errors.Is(err, context.DeadlineExceeded) {
+			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
+		} else {
+			log.Printf("Failed to get daily trends: %v", err)
+			h.writeErrorResponse(w, "Failed to retrieve daily trends", http.StatusInternalServerError)
+		}
 		return
 	}
 	defer rows.Close()
@@ -546,6 +488,7 @@ func (h *Handler) getDailyTrends(w http.ResponseWriter, r *http.Request) {
 			&trend.CPA,
 		)
 		if err != nil {
+			log.Printf("DailyTrends: Failed to scan row: %v", err)
 			continue
 		}
 		trend.Date = date.Format("2006-01-02")
@@ -557,13 +500,14 @@ func (h *Handler) getDailyTrends(w http.ResponseWriter, r *http.Request) {
 
 // getCompetitiveAnalysis returns competitive insights
 func (h *Handler) getCompetitiveAnalysis(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
-		log.Println("DEBUG: CompetitiveAnalysis: UserID is empty, unauthorized request.")
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
 	}
-	log.Printf("DEBUG: CompetitiveAnalysis: Processing for UserID: %s", userID)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
 
 	var req struct {
 		StartDate string `json:"start_date"`
@@ -572,7 +516,6 @@ func (h *Handler) getCompetitiveAnalysis(w http.ResponseWriter, r *http.Request)
 	json.NewDecoder(r.Body).Decode(&req)
 
 	startDate, endDate := parseDateRange(req.StartDate, req.EndDate)
-	log.Printf("DEBUG: CompetitiveAnalysis: Params - StartDate: %v, EndDate: %v", startDate, endDate)
 
 	query := `
 		SELECT 
@@ -585,26 +528,29 @@ func (h *Handler) getCompetitiveAnalysis(w http.ResponseWriter, r *http.Request)
 			COUNT(*) as total_opportunities
 		FROM bid_events
 		WHERE timestamp BETWEEN $2 AND $3
-        -- NOTE: Since this is competitive analysis, the WHERE clause filters by time, 
-        -- but does NOT filter by user_id, allowing all bids (market data) to be included.
 		GROUP BY segment_category
 		ORDER BY total_opportunities DESC
 		LIMIT 10
 	`
-
-	// $1 = userID (string), $2 = startDate, $3 = endDate
-	rows, err := h.bidStore.DB().Query(query, userID, startDate, endDate)
+	log.Printf("[DEBUG] Executing competitive analysis query:\n%s\nArgs: userID=%s, startDate=%v, endDate=%v",
+		query, userID, startDate, endDate)
+	// Using QueryContext
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate)
 	if err != nil {
-		log.Printf("DEBUG ERROR: Failed to get competitive analysis: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve competitive analysis", http.StatusInternalServerError)
+		if errors.Is(err, context.DeadlineExceeded) {
+			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
+		} else {
+			log.Printf("Failed to get competitive analysis: %v", err)
+			h.writeErrorResponse(w, "Failed to retrieve competitive analysis", http.StatusInternalServerError)
+		}
 		return
 	}
 	defer rows.Close()
 
 	var competitive []CompetitiveAnalysis
-	rowsScanned := 0
 	for rows.Next() {
 		var comp CompetitiveAnalysis
+		// Note: Using sql.NullFloat64 for OurAverageBid to correctly handle NULL if no bids were found for this user/segment
 		err := rows.Scan(
 			&comp.SegmentCategory,
 			&comp.OurWinRate,
@@ -615,25 +561,25 @@ func (h *Handler) getCompetitiveAnalysis(w http.ResponseWriter, r *http.Request)
 			&comp.TotalOpportunities,
 		)
 		if err != nil {
-			log.Printf("DEBUG ERROR: CompetitiveAnalysis: Failed to scan row: %v", err)
+			log.Printf("CompetitiveAnalysis: Failed to scan row: %v", err)
 			continue
 		}
 		competitive = append(competitive, comp)
-		rowsScanned++
 	}
-
-	log.Printf("DEBUG: CompetitiveAnalysis: Query completed. Successfully scanned %d rows.", rowsScanned)
 
 	h.writeTRPCResponse(w, competitive)
 }
 
 // getCampaignComparison returns comparison metrics across campaigns
 func (h *Handler) getCampaignComparison(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
 	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
 
 	var req struct {
 		StartDate   string   `json:"start_date"`
@@ -647,7 +593,7 @@ func (h *Handler) getCampaignComparison(w http.ResponseWriter, r *http.Request) 
 	// If specific campaigns requested, use them; otherwise get all user campaigns
 	campaignsFilter := ""
 	if len(req.CampaignIDs) > 0 {
-		campaignsFilter = " AND campaign_id = ANY($4)"
+		campaignsFilter = " AND c.id = ANY($4)"
 	}
 
 	query := `
@@ -671,30 +617,29 @@ func (h *Handler) getCampaignComparison(w http.ResponseWriter, r *http.Request) 
 	var rows *sql.Rows
 	var err error
 
+	// NOTE: If campaigns.user_id is a UUID type in PostgreSQL, we must parse the userID string.
+	// If campaigns.user_id is VARCHAR, we should pass the string. Assuming UUID as best practice.
 	userUUID, _ := uuid.Parse(userID)
+
+	// Execute query based on whether campaign IDs are provided
 	if len(req.CampaignIDs) > 0 {
-		rows, err = h.bidStore.DB().Query(query, userUUID, startDate, endDate, req.CampaignIDs)
+		// Using QueryContext
+		rows, err = h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate, req.CampaignIDs)
 	} else {
-		rows, err = h.bidStore.DB().Query(query, userUUID, startDate, endDate)
+		// Using QueryContext
+		rows, err = h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate)
 	}
 
 	if err != nil {
-		log.Printf("Failed to get campaign comparison: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve campaign comparison", http.StatusInternalServerError)
+		if errors.Is(err, context.DeadlineExceeded) {
+			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
+		} else {
+			log.Printf("Failed to get campaign comparison: %v", err)
+			h.writeErrorResponse(w, "Failed to retrieve campaign comparison", http.StatusInternalServerError)
+		}
 		return
 	}
 	defer rows.Close()
-
-	type CampaignComparison struct {
-		CampaignID     string  `json:"campaign_id"`
-		CampaignName   string  `json:"campaign_name"`
-		TotalBids      int64   `json:"total_bids"`
-		WonBids        int64   `json:"won_bids"`
-		Conversions    int64   `json:"conversions"`
-		Spend          float64 `json:"spend"`
-		WinRate        float64 `json:"win_rate"`
-		ConversionRate float64 `json:"conversion_rate"`
-	}
 
 	var campaigns []CampaignComparison
 	for rows.Next() {
@@ -711,6 +656,7 @@ func (h *Handler) getCampaignComparison(w http.ResponseWriter, r *http.Request) 
 			&camp.ConversionRate,
 		)
 		if err != nil {
+			log.Printf("CampaignComparison: Failed to scan row: %v", err)
 			continue
 		}
 		camp.CampaignID = id.String()
@@ -725,19 +671,28 @@ func parseDateRange(startDateStr, endDateStr string) (time.Time, time.Time) {
 	endDate := time.Now()
 	startDate := endDate.AddDate(0, 0, -30) // Default to last 30 days
 
+	// Handle Z or lack of explicit time by using ParseInLocation and setting time to 00:00:00
+	location, _ := time.LoadLocation("UTC")
+
 	if startDateStr != "" {
-		if parsed, err := time.Parse("2006-01-02", startDateStr); err == nil {
+		if parsed, err := time.ParseInLocation("2006-01-02", startDateStr, location); err == nil {
 			startDate = parsed
+		} else if parsed, err := time.Parse(time.RFC3339, startDateStr); err == nil {
+			startDate = parsed.In(location)
 		}
 	}
 
 	if endDateStr != "" {
-		if parsed, err := time.Parse("2006-01-02", endDateStr); err == nil {
+		if parsed, err := time.ParseInLocation("2006-01-02", endDateStr, location); err == nil {
 			endDate = parsed
+		} else if parsed, err := time.Parse(time.RFC3339, endDateStr); err == nil {
+			endDate = parsed.In(location)
 		}
 	}
 
-	// Ensure endDate includes full day
+	// Ensure endDate includes full day (up to 23:59:59.999...)
+	// Only add if the date parsing was ambiguous (e.g., "YYYY-MM-DD")
+	// If RFC3339 was used (like in the curl), it already has time info, but we apply the shift here defensively.
 	endDate = endDate.Add(24 * time.Hour).Add(-1 * time.Second)
 
 	return startDate, endDate

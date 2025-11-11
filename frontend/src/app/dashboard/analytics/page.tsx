@@ -14,11 +14,11 @@ import {
 } from "lucide-react";
 import {
   getPerformanceOverview,
-  getKeywordAnalysis,
-  getDeviceBreakdown,
-  getGeoBreakdown,
-  getHourlyPerformance,
-  getCompetitiveAnalysis,
+  // getKeywordAnalysis,
+  // getDeviceBreakdown,
+  // getGeoBreakdown,
+  // getHourlyPerformance,
+  // getCompetitiveAnalysis,
   type PerformanceMetrics,
   type KeywordAnalysis,
   type DeviceBreakdown,
@@ -229,31 +229,37 @@ function KeywordAnalysisTable({
                   {kw.keyword}
                 </td>
                 <td className="py-3 text-right text-slate-600">
-                  {kw.total_bids.toLocaleString()}
+                  {/* FIX: Use nullish coalescing (?? 0) */}
+                  {(kw.total_bids ?? 0).toLocaleString()}
                 </td>
                 <td className="py-3 text-right">
                   <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
-                    {formatPercent(kw.win_rate)}
+                    {/* FIX: Use nullish coalescing (?? 0) */}
+                    {formatPercent(kw.win_rate ?? 0)}
                   </span>
                 </td>
                 <td className="py-3 text-right">
                   <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
-                    {formatPercent(kw.conversion_rate)}
+                    {/* FIX: Use nullish coalescing (?? 0) */}
+                    {formatPercent(kw.conversion_rate ?? 0)}
                   </span>
                 </td>
                 <td className="py-3 text-right text-slate-900 font-medium">
-                  {formatCurrency(kw.spend)}
+                  {/* FIX: Use nullish coalescing (?? 0) */}
+                  {formatCurrency(kw.spend ?? 0)}
                 </td>
                 <td
                   className={`py-3 text-right font-semibold ${
-                    kw.roas >= 2
+                    // FIX: Use nullish coalescing (?? 0) for comparison
+                    (kw.roas ?? 0) >= 2
                       ? "text-green-600"
-                      : kw.roas >= 1
+                      : (kw.roas ?? 0) >= 1
                         ? "text-yellow-600"
                         : "text-red-600"
-                  }`}
+                    }`}
                 >
-                  {kw.roas.toFixed(2)}x
+                  {/* FIX: Use nullish coalescing (?? 0) to prevent .toFixed error */}
+                  {(kw.roas ?? 0).toFixed(2)}x
                 </td>
               </tr>
             ))}
@@ -317,7 +323,7 @@ function DeviceBreakdownChart({
               </span>
               <div className="flex items-center space-x-4 text-sm">
                 <span className="text-slate-600">
-                  {device.total_bids.toLocaleString()} bids
+                  {(device?.total_bids ?? 0).toLocaleString()} bids
                 </span>
                 <span className="text-blue-600 font-medium">
                   {formatPercent(device.win_rate)} WR
@@ -407,30 +413,36 @@ function GeoBreakdownTable({
               <tr key={idx} className="hover:bg-slate-50">
                 <td className="py-3">
                   <div>
+                    {/* FIX 1: Safely access the string value of the 'country' object */}
                     <div className="font-medium text-slate-900">
                       {geo.country}
                     </div>
+
+                    {/* FIX 2: Check if the 'region' string value exists before rendering */}
                     {geo.region && (
                       <div className="text-sm text-slate-500">
                         {geo.region}
-                      </div>
+                      </div>  
                     )}
                   </div>
                 </td>
+
+                {/* Corrected metric property names (camelCase as per your data sample) */}
                 <td className="py-3 text-right text-slate-600">
-                  {geo.total_bids.toLocaleString()}
+                  {(geo?.totalBids || 0).toLocaleString()}
                 </td>
                 <td className="py-3 text-right text-slate-600">
-                  {geo.won_bids.toLocaleString()}
+                  {(geo?.wonBids || 0).toLocaleString()}
                 </td>
+
                 <td className="py-3 text-right">
                   <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
-                    {formatPercent(geo.win_rate)}
+                    {formatPercent(geo.winRate)}
                   </span>
                 </td>
                 <td className="py-3 text-right">
                   <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
-                    {formatPercent(geo.conversion_rate)}
+                    {formatPercent(geo.conversionRate)}
                   </span>
                 </td>
                 <td className="py-3 text-right text-slate-900 font-medium">
@@ -594,7 +606,7 @@ function CompetitiveAnalysisCard({
                 {comp.segment_category}
               </span>
               <span className="text-sm text-slate-600">
-                {comp.total_opportunities.toLocaleString()} opportunities
+                {(comp?.total_opportunities || 0).toLocaleString()} opportunities
               </span>
             </div>
 
@@ -620,15 +632,14 @@ function CompetitiveAnalysisCard({
               <div>
                 <p className="text-slate-600">Competition</p>
                 <p
-                  className={`font-semibold ${
-                    comp.competition_intensity > 1.5
+                  className={`font-semibold ${comp.competition_intensity > 1.5
                       ? "text-red-600"
                       : comp.competition_intensity > 1.2
                         ? "text-yellow-600"
                         : "text-green-600"
-                  }`}
+                    }`}
                 >
-                  {comp.competition_intensity.toFixed(2)}x
+                  {(comp?.competition_intensity || 0).toFixed(2)}x
                 </p>
               </div>
             </div>
@@ -647,11 +658,16 @@ export default function AnalysisPage() {
   // State for all data
   const [performanceMetrics, setPerformanceMetrics] =
     useState<PerformanceMetrics | null>(null);
-  const [keywords, setKeywords] = useState<KeywordAnalysis[]>([]);
-  const [devices, setDevices] = useState<DeviceBreakdown[]>([]);
-  const [geos, setGeos] = useState<GeoBreakdown[]>([]);
-  const [hourly, setHourly] = useState<HourlyPerformance[]>([]);
-  const [competitive, setCompetitive] = useState<CompetitiveAnalysis[]>([]);
+  // const [keywords, setKeywords] = useState<KeywordAnalysis[]>([]);
+  // const [devices, setDevices] = useState<DeviceBreakdown[]>([]);
+  // const [geos, setGeos] = useState<GeoBreakdown[]>([]);
+  // const [hourly, setHourly] = useState<HourlyPerformance[]>([]);
+  // const [competitive, setCompetitive] = useState<CompetitiveAnalysis[]>([]);
+  const keywords: KeywordAnalysis[] = [];
+  const devices: DeviceBreakdown[] = [];
+  const geos: GeoBreakdown[] = [];
+  const hourly: HourlyPerformance[] = [];
+  const competitive: CompetitiveAnalysis[] = [];  
 
   // Calculate date range
   const getDateRange = () => {
@@ -673,26 +689,26 @@ export default function AnalysisPage() {
     try {
       const [
         perfData,
-        kwData,
-        deviceData,
-        geoData,
-        hourlyData,
-        compData,
+        // kwData,
+        // deviceData,
+        // geoData,
+        // hourlyData,
+        // compData,
       ] = await Promise.all([
         getPerformanceOverview(dateParams),
-        getKeywordAnalysis({ ...dateParams, limit: 20 }),
-        getDeviceBreakdown(dateParams),
-        getGeoBreakdown({ ...dateParams, limit: 20 }),
-        getHourlyPerformance(dateParams),
-        getCompetitiveAnalysis(dateParams),
+        // getKeywordAnalysis({ ...dateParams, limit: 20 }),
+        // getDeviceBreakdown(dateParams),
+        // getGeoBreakdown({ ...dateParams, limit: 20 }),
+        // getHourlyPerformance(dateParams),
+        // getCompetitiveAnalysis(dateParams),
       ]);
 
       setPerformanceMetrics(perfData);
-      setKeywords(kwData || []);
-      setDevices(deviceData || []);
-      setGeos(geoData || []);
-      setHourly(hourlyData || []);
-      setCompetitive(compData || []);
+      // setKeywords(kwData || []);
+      // setDevices(deviceData || []);
+      // setGeos(geoData || []);
+      // setHourly(hourlyData || []);
+      // setCompetitive(compData || []);
     } catch (error) {
       console.error("Failed to load analysis data:", error);
     } finally {

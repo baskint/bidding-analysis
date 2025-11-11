@@ -171,7 +171,7 @@ func (h *Handler) debugEndpoint(w http.ResponseWriter, r *http.Request) {
 
 // Campaign handlers
 func (h *Handler) listCampaigns(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
@@ -188,7 +188,7 @@ func (h *Handler) listCampaigns(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createCampaign(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
@@ -226,7 +226,7 @@ func (h *Handler) createCampaign(w http.ResponseWriter, r *http.Request) {
 
 // Analytics handlers
 func (h *Handler) getDashboardMetrics(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
@@ -623,7 +623,7 @@ func (h *Handler) getFallbackPrediction(req BidPredictionRequest) *models.BidRes
 
 // getCampaign retrieves a single campaign with detailed metrics
 func (h *Handler) getCampaign(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
@@ -669,7 +669,7 @@ func (h *Handler) getCampaign(w http.ResponseWriter, r *http.Request) {
 
 // updateCampaign updates an existing campaign
 func (h *Handler) updateCampaign(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
@@ -773,7 +773,7 @@ func (h *Handler) updateCampaign(w http.ResponseWriter, r *http.Request) {
 
 // deleteCampaign soft deletes a campaign
 func (h *Handler) deleteCampaign(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
@@ -819,7 +819,7 @@ func (h *Handler) deleteCampaign(w http.ResponseWriter, r *http.Request) {
 
 // pauseCampaign pauses an active campaign
 func (h *Handler) pauseCampaign(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
@@ -869,7 +869,7 @@ func (h *Handler) pauseCampaign(w http.ResponseWriter, r *http.Request) {
 
 // activateCampaign activates a paused campaign
 func (h *Handler) activateCampaign(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
@@ -919,7 +919,7 @@ func (h *Handler) activateCampaign(w http.ResponseWriter, r *http.Request) {
 
 // listCampaignsEnhanced lists campaigns with metrics (enhanced version)
 func (h *Handler) listCampaignsEnhanced(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
@@ -952,7 +952,7 @@ func (h *Handler) listCampaignsEnhanced(w http.ResponseWriter, r *http.Request) 
 
 // getDailyMetrics retrieves daily metrics for a campaign
 func (h *Handler) getDailyMetrics(w http.ResponseWriter, r *http.Request) {
-	userID := getUserIDFromContext(r.Context())
+	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
 		return
