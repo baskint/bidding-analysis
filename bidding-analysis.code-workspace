@@ -7,6 +7,7 @@
 	"settings": {
 		"workbench.preferredDarkColorTheme": "Bearded Theme Milkshake Raspberry",
 		"workbench.colorTheme": "Bearded Theme Oceanic",
-		"workbench.iconTheme": "bearded-icons"
+		"workbench.iconTheme": "bearded-icons",
+		"makefile.configureOnOpen": true
 	}
 }

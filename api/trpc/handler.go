@@ -100,6 +100,16 @@ func (h *Handler) SetupRoutes() http.Handler {
 	protected.HandleFunc("/campaign.listWithMetrics", h.listCampaignsEnhanced).Methods("GET", "POST")
 	protected.HandleFunc("/campaign.getDailyMetrics", h.getDailyMetrics).Methods("GET", "POST")
 
+	// Analysis page procedures
+	protected.HandleFunc("/analytics.getPerformanceOverview", h.getPerformanceOverview).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getKeywordAnalysis", h.getKeywordAnalysis).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getDeviceBreakdown", h.getDeviceBreakdown).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getGeoBreakdown", h.getGeoBreakdown).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getHourlyPerformance", h.getHourlyPerformance).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getDailyTrends", h.getDailyTrends).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getCompetitiveAnalysis", h.getCompetitiveAnalysis).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getCampaignComparison", h.getCampaignComparison).Methods("GET", "POST")
+
 	return router
 }
 
@@ -990,16 +1000,3 @@ func (h *Handler) getDailyMetrics(w http.ResponseWriter, r *http.Request) {
 
 	h.writeTRPCResponse(w, metrics)
 }
-
-/*
-Add these routes to your SetupRoutes() function in handler.go:
-
-// Enhanced campaign procedures
-protected.HandleFunc("/campaign.get", h.getCampaign).Methods("GET", "POST")
-protected.HandleFunc("/campaign.update", h.updateCampaign).Methods("POST")
-protected.HandleFunc("/campaign.delete", h.deleteCampaign).Methods("POST")
-protected.HandleFunc("/campaign.pause", h.pauseCampaign).Methods("POST")
-protected.HandleFunc("/campaign.activate", h.activateCampaign).Methods("POST")
-protected.HandleFunc("/campaign.listWithMetrics", h.listCampaignsEnhanced).Methods("GET", "POST")
-protected.HandleFunc("/campaign.getDailyMetrics", h.getDailyMetrics).Methods("GET", "POST")
-*/

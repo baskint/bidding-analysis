@@ -138,6 +138,9 @@ CREATE INDEX idx_campaign_metrics_campaign_date ON campaign_metrics(campaign_id,
 CREATE INDEX idx_predictions_bid_event_id ON predictions(bid_event_id);
 CREATE INDEX idx_fraud_alerts_campaign_id ON fraud_alerts(campaign_id);
 CREATE INDEX idx_fraud_alerts_detected_at ON fraud_alerts(detected_at);
+CREATE INDEX idx_bid_events_user_timestamp ON bid_events(user_id, timestamp);
+CREATE INDEX idx_bid_events_campaign ON bid_events(campaign_id);
+CREATE INDEX idx_bid_events_keywords ON bid_events USING gin(keywords);
 
 -- Triggers for updated_at timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()

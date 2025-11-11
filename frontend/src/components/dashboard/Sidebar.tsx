@@ -11,7 +11,7 @@ import {
   TrendingUp,
   Brain,
   AlertTriangle,
-  Activity
+  Activity,
 } from 'lucide-react';
 
 const navigation = [
