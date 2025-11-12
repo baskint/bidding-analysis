@@ -240,7 +240,7 @@ export default function CampaignsPage() {
               <div className="p-6 border-b border-gray-100">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <Link href={`/dashboard/campaigns/${campaign.id}`}>
+                    <Link href={`/dashboard/campaigns/edit?id=${campaign.id}`}>
                       <h3 className="text-lg font-semibold text-gray-900 hover:text-blue-600 cursor-pointer">
                         {campaign.name}
                       </h3>

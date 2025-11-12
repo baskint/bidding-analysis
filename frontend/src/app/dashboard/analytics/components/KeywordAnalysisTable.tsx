@@ -68,16 +68,16 @@ export function KeywordAnalysisTable({
                   {kw.keyword}
                 </td>
                 <td className="py-3 text-right text-slate-600">
-                  {(kw.total_bids ?? 0).toLocaleString()}
+                  {(kw.totalBids ?? 0).toLocaleString()}
                 </td>
                 <td className="py-3 text-right">
                   <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
-                    {formatPercent(kw.win_rate ?? 0)}
+                    {formatPercent(kw.winRate ?? 0)}
                   </span>
                 </td>
                 <td className="py-3 text-right">
                   <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
-                    {formatPercent(kw.conversion_rate ?? 0)}
+                    {formatPercent(kw.conversionRate ?? 0)}
                   </span>
                 </td>
                 <td className="py-3 text-right text-slate-900 font-medium">

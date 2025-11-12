@@ -87,7 +87,7 @@ export function CampaignForm({ initialCampaign, mode }: CampaignFormProps) {
             : undefined,
         };
         const result = await createCampaign(data);
-        router.push(`/dashboard/campaigns/${result.id}`);
+        router.push(`/dashboard/campaigns/edit?id=${result.id}`);
       } else if (initialCampaign) {
         const data: UpdateCampaignInput = {
           id: initialCampaign.id,
@@ -102,7 +102,7 @@ export function CampaignForm({ initialCampaign, mode }: CampaignFormProps) {
             : undefined,
         };
         await updateCampaign(data);
-        router.push(`/dashboard/campaigns/${initialCampaign?.id}`);
+        router.push(`/dashboard/campaigns/edit?id= ${initialCampaign?.id}`);
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error
