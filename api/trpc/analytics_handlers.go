@@ -29,15 +29,29 @@ func (h *Handler) getPerformanceOverview(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Parse userID to UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		log.Printf("Invalid user ID format: %v", err)
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
 	// Setup context with a 60 second database timeout
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
+	// FIX: Decode as plain object, NOT array
 	var req struct {
 		StartDate string `json:"start_date"`
 		EndDate   string `json:"end_date"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Failed to decode request body: %v", err)
+		h.writeErrorResponse(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
 
 	startDate, endDate := parseDateRange(req.StartDate, req.EndDate)
 
@@ -68,7 +82,7 @@ func (h *Handler) getPerformanceOverview(w http.ResponseWriter, r *http.Request)
 
 	var metrics PerformanceMetrics
 
-	err := h.bidStore.DB().QueryRowContext(ctx, query, userID, startDate, endDate).Scan(
+	err = h.bidStore.DB().QueryRowContext(ctx, query, userUUID, startDate, endDate).Scan(
 		&metrics.TotalBids,
 		&metrics.WonBids,
 		&metrics.Conversions,
@@ -105,6 +119,14 @@ func (h *Handler) getKeywordAnalysis(w http.ResponseWriter, r *http.Request) {
 	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
 		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse userID to UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		log.Printf("Invalid user ID format: %v", err)
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
 		return
 	}
 
@@ -155,8 +177,8 @@ func (h *Handler) getKeywordAnalysis(w http.ResponseWriter, r *http.Request) {
 		LIMIT $4
 	`
 
-	// Using QueryContext
-	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate, limit)
+	// Using QueryContext with userUUID
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate, limit)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			log.Printf("Failed to get keyword analysis: Query timed out after 60s")
@@ -206,6 +228,14 @@ func (h *Handler) getDeviceBreakdown(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse userID to UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		log.Printf("Invalid user ID format: %v", err)
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
@@ -234,8 +264,8 @@ func (h *Handler) getDeviceBreakdown(w http.ResponseWriter, r *http.Request) {
 		ORDER BY total_bids DESC
 	`
 
-	// Using QueryContext
-	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate)
+	// Using QueryContext with userUUID
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
@@ -278,6 +308,14 @@ func (h *Handler) getGeoBreakdown(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse userID to UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		log.Printf("Invalid user ID format: %v", err)
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
@@ -312,8 +350,8 @@ func (h *Handler) getGeoBreakdown(w http.ResponseWriter, r *http.Request) {
 		LIMIT $4
 	`
 
-	// Using QueryContext
-	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate, limit)
+	// Using QueryContext with userUUID
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate, limit)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
@@ -356,6 +394,14 @@ func (h *Handler) getHourlyPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse userID to UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		log.Printf("Invalid user ID format: %v", err)
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
@@ -384,8 +430,8 @@ func (h *Handler) getHourlyPerformance(w http.ResponseWriter, r *http.Request) {
 		ORDER BY hour
 	`
 
-	// Using QueryContext
-	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate)
+	// Using QueryContext with userUUID
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
@@ -430,6 +476,14 @@ func (h *Handler) getDailyTrends(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse userID to UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		log.Printf("Invalid user ID format: %v", err)
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
@@ -459,8 +513,8 @@ func (h *Handler) getDailyTrends(w http.ResponseWriter, r *http.Request) {
 		ORDER BY date
 	`
 
-	// Using QueryContext
-	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate)
+	// Using QueryContext with userUUID
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
@@ -506,6 +560,14 @@ func (h *Handler) getCompetitiveAnalysis(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Parse userID to UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		log.Printf("Invalid user ID format: %v", err)
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
@@ -532,10 +594,10 @@ func (h *Handler) getCompetitiveAnalysis(w http.ResponseWriter, r *http.Request)
 		ORDER BY total_opportunities DESC
 		LIMIT 10
 	`
-	log.Printf("[DEBUG] Executing competitive analysis query:\n%s\nArgs: userID=%s, startDate=%v, endDate=%v",
-		query, userID, startDate, endDate)
-	// Using QueryContext
-	rows, err := h.bidStore.DB().QueryContext(ctx, query, userID, startDate, endDate)
+	log.Printf("[DEBUG] Executing competitive analysis query:\n%s\nArgs: userUUID=%s, startDate=%v, endDate=%v",
+		query, userUUID, startDate, endDate)
+	// Using QueryContext with userUUID
+	rows, err := h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
@@ -578,6 +640,14 @@ func (h *Handler) getCampaignComparison(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Parse userID to UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		log.Printf("Invalid user ID format: %v", err)
+		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
@@ -615,18 +685,13 @@ func (h *Handler) getCampaignComparison(w http.ResponseWriter, r *http.Request) 
 	`
 
 	var rows *sql.Rows
-	var err error
-
-	// NOTE: If campaigns.user_id is a UUID type in PostgreSQL, we must parse the userID string.
-	// If campaigns.user_id is VARCHAR, we should pass the string. Assuming UUID as best practice.
-	userUUID, _ := uuid.Parse(userID)
 
 	// Execute query based on whether campaign IDs are provided
 	if len(req.CampaignIDs) > 0 {
-		// Using QueryContext
+		// Using QueryContext with userUUID
 		rows, err = h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate, req.CampaignIDs)
 	} else {
-		// Using QueryContext
+		// Using QueryContext with userUUID
 		rows, err = h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate)
 	}
 

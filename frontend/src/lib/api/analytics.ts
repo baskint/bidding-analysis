@@ -122,7 +122,6 @@ export interface DateRangeParams {
 }
 
 // API Functions
-
 /**
  * Get overall performance metrics
  */
@@ -135,6 +134,8 @@ export async function getPerformanceOverview(
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(params || {}),
+      cache: 'no-store', // Important: prevent Next.js caching
+      signal: AbortSignal.timeout(30000), // 30 second timeout
     },
   );
   return handleResponse(response);
@@ -152,6 +153,8 @@ export async function getKeywordAnalysis(
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(params || {}),
+      cache: 'no-store', // Important: prevent Next.js caching
+      signal: AbortSignal.timeout(30000), // 30 second timeout
     },
   );
   return handleResponse(response);

@@ -27,7 +27,7 @@ CREATE TABLE campaigns (
 CREATE TABLE bid_events (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     campaign_id UUID REFERENCES campaigns(id),
-    user_id VARCHAR(100),
+    user_id UUID REFERENCES users(id),
     bid_price DECIMAL(8,4) NOT NULL,
     win_price DECIMAL(8,4),
     floor_price DECIMAL(8,4),
