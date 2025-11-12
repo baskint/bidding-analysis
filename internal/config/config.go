@@ -19,12 +19,13 @@ type Config struct {
 
 // DatabaseConfig holds database connection settings
 type DatabaseConfig struct {
-	Host     string
-	Port     int
-	Name     string
-	User     string
-	Password string
-	SSLMode  string
+	Host               string
+	Port               int
+	Name               string
+	User               string
+	Password           string
+	SSLMode            string
+	StatementCacheMode string
 }
 
 // ServerConfig holds server settings
@@ -66,6 +67,7 @@ func Load() (*Config, error) {
 	cfg.Database.User = getEnv("DB_USER", "postgres")
 	cfg.Database.Password = getEnv("DB_PASSWORD", "")
 	cfg.Database.SSLMode = getEnv("DB_SSL_MODE", "require")
+	cfg.Database.StatementCacheMode = getEnv("DB_STATEMENT_CACHE_MODE", "describe")
 
 	// Server configuration
 	cfg.Server.Port = getEnvAsInt("SERVER_PORT", 8080)
@@ -110,7 +112,8 @@ func (c *Config) DatabaseURL() string {
 		c.Database.Host,
 		c.Database.Port,
 		c.Database.Name,
-		c.Database.SSLMode)
+		c.Database.SSLMode,
+		c.Database.StatementCacheMode)
 }
 
 // getEnv gets an environment variable with a fallback value
