@@ -296,8 +296,8 @@ func (p *Predictor) generateRecommendations(analysis *CampaignAnalysis) []string
 
 // ruleBasedFraudDetection implements basic fraud detection rules
 func (p *Predictor) ruleBasedFraudDetection(bidData []*models.BidEvent) *FraudDetectionResult {
-	userActivity := make(map[string]int)
-	userConversions := make(map[string]int)
+	userActivity := make(map[uuid.UUID]int)
+	userConversions := make(map[uuid.UUID]int)
 
 	for _, bid := range bidData {
 		userActivity[bid.UserID]++
@@ -307,7 +307,7 @@ func (p *Predictor) ruleBasedFraudDetection(bidData []*models.BidEvent) *FraudDe
 	}
 
 	// Check for suspicious patterns
-	var suspiciousUsers []string
+	var suspiciousUsers []uuid.UUID
 	for userID, activity := range userActivity {
 		conversions := userConversions[userID]
 		conversionRate := float64(conversions) / float64(activity)
@@ -395,13 +395,13 @@ type CampaignAnalysis struct {
 }
 
 type FraudDetectionResult struct {
-	CampaignID      uuid.UUID `json:"campaign_id"`
-	FraudDetected   bool      `json:"fraud_detected"`
-	Confidence      float64   `json:"confidence"`
-	SuspiciousUsers []string  `json:"suspicious_users"`
-	Severity        int       `json:"severity"`
-	DetectionMethod string    `json:"detection_method"`
-	Message         string    `json:"message,omitempty"`
+	CampaignID      uuid.UUID   `json:"campaign_id"`
+	FraudDetected   bool        `json:"fraud_detected"`
+	Confidence      float64     `json:"confidence"`
+	SuspiciousUsers []uuid.UUID `json:"suspicious_users"`
+	Severity        int         `json:"severity"`
+	DetectionMethod string      `json:"detection_method"`
+	Message         string      `json:"message,omitempty"`
 }
 
 // Types are now defined in open_ai.go to avoid duplication

@@ -39,26 +39,26 @@ export interface PerformanceMetrics {
 
 export interface KeywordAnalysis {
   keyword: string;
-  total_bids: number;
-  won_bids: number;
+  totalBids: number;
+  wonBids: number;
   conversions: number;
   spend: number;
   revenue: number;
-  win_rate: number;
-  conversion_rate: number;
+  winRate: number;
+  conversionRate: number;
   cpa: number;
   roas: number;
 }
 
 export interface DeviceBreakdown {
-  device_type: string;
-  total_bids: number;
-  won_bids: number;
+  deviceType: string;
+  totalBids: number;
+  wonBids: number;
   conversions: number;
   spend: number;
-  win_rate: number;
-  conversion_rate: number;
-  average_bid: number;
+  winRate: number;
+  conversionRate: number;
+  averageBid: number;
 }
 
 export interface GeoBreakdown {
@@ -172,6 +172,8 @@ export async function getDeviceBreakdown(
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(params || {}),
+      cache: 'no-store', // Important: prevent Next.js caching
+      signal: AbortSignal.timeout(30000), // 30 second timeout
     },
   );
   return handleResponse(response);

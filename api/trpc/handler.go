@@ -313,19 +313,19 @@ func (h *Handler) getModelAccuracy(w http.ResponseWriter, r *http.Request) {
 
 // BidRequest represents an incoming bid request
 type BidSubmitRequest struct {
-	CampaignID      string   `json:"campaign_id"`
-	UserID          string   `json:"user_id"`
-	BidPrice        float64  `json:"bid_price"`
-	FloorPrice      float64  `json:"floor_price"`
-	DeviceType      string   `json:"device_type"`
-	OS              string   `json:"os"`
-	Browser         string   `json:"browser"`
-	Country         string   `json:"country"`
-	Region          string   `json:"region"`
-	City            string   `json:"city"`
-	Keywords        []string `json:"keywords"`
-	SegmentID       string   `json:"segment_id"`
-	SegmentCategory string   `json:"segment_category"`
+	CampaignID      string    `json:"campaign_id"`
+	UserID          uuid.UUID `json:"user_id"`
+	BidPrice        float64   `json:"bid_price"`
+	FloorPrice      float64   `json:"floor_price"`
+	DeviceType      string    `json:"device_type"`
+	OS              string    `json:"os"`
+	Browser         string    `json:"browser"`
+	Country         string    `json:"country"`
+	Region          string    `json:"region"`
+	City            string    `json:"city"`
+	Keywords        []string  `json:"keywords"`
+	SegmentID       string    `json:"segment_id"`
+	SegmentCategory string    `json:"segment_category"`
 }
 
 // BidResponse represents the response after processing a bid

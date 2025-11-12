@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/sashabaranov/go-openai"
 
 	"github.com/baskint/bidding-analysis/internal/models"
@@ -197,7 +198,7 @@ func (c *OpenAIClient) buildFraudPrompt(bidEvents []*models.BidEvent) string {
 	prompt.WriteString("Analyze these bid events for fraud patterns:\n\n")
 
 	// Group by user for pattern analysis
-	userStats := make(map[string]*UserStats)
+	userStats := make(map[uuid.UUID]*UserStats)
 
 	for _, bid := range bidEvents {
 		if _, exists := userStats[bid.UserID]; !exists {

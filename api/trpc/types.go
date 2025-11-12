@@ -242,8 +242,8 @@ func (g GeoBreakdown) MarshalJSON() ([]byte, error) {
 // DeviceBreakdown represents aggregated statistics by device type.
 type DeviceBreakdown struct {
 	// (sql.NullString handles the previous "converting NULL to string" error)
-	DeviceType sql.NullString `db:"device_type" json:"deviceType"`
-	TotalBids  int64          `db:"total_bids" json:"totalBids"`
+	DeviceType string `json:"deviceType"`
+	TotalBids  int64  `db:"total_bids" json:"totalBids"`
 
 	// ADDED RAW COUNTS/SPEND FROM SQL QUERY:
 	WonBids     int64   `db:"won_bids" json:"wonBids"`        // Fixes Line 278 error

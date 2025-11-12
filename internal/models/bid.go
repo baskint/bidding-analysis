@@ -11,7 +11,7 @@ import (
 type BidEvent struct {
 	ID         uuid.UUID `db:"id" json:"id"`
 	CampaignID uuid.UUID `db:"campaign_id" json:"campaign_id"`
-	UserID     string    `db:"user_id" json:"user_id"`
+	UserID     uuid.UUID `db:"user_id" json:"user_id"`
 
 	// Pricing
 	BidPrice   float64  `db:"bid_price" json:"bid_price"`

@@ -148,7 +148,7 @@ func (g *DataGenerator) generateCampaigns(userID uuid.UUID, count int) ([]*model
 	return campaigns, nil
 }
 
-func (g *DataGenerator) generateBidEvents(campaignID uuid.UUID, count int) error {
+func (g *DataGenerator) generateBidEvents(campaignID uuid.UUID, userId uuid.UUID, count int) error {
 	// Define user segments with different behaviors
 	segments := []struct {
 		id                   string
@@ -232,7 +232,7 @@ func (g *DataGenerator) generateBidEvents(campaignID uuid.UUID, count int) error
 
 		bidEvent := &models.BidEvent{
 			CampaignID:            campaignID,
-			UserID:                g.generateUserID(),
+			UserID:                userId,
 			BidPrice:              bidPrice,
 			WinPrice:              winPrice,
 			FloorPrice:            floorPrice,

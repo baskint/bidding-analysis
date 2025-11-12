@@ -249,7 +249,7 @@ func (h *Handler) getDeviceBreakdown(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT 
-			device_type,
+			COALESCE(device_type, 'Unknown') AS device_type,
 			COUNT(*) as total_bids,
 			SUM(CASE WHEN won THEN 1 ELSE 0 END) as won_bids,
 			SUM(CASE WHEN converted THEN 1 ELSE 0 END) as conversions,

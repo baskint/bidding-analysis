@@ -155,8 +155,8 @@ func (m *MockOpenAIClient) DetectFraud(ctx context.Context, bidEvents []*models.
 	// Simulate processing delay
 	time.Sleep(time.Millisecond * time.Duration(150+m.rng.Intn(100)))
 
-	userActivity := make(map[string]int)
-	userConversions := make(map[string]int)
+	userActivity := make(map[uuid.UUID]int)
+	userConversions := make(map[uuid.UUID]int)
 
 	for _, bid := range bidEvents {
 		userActivity[bid.UserID]++
@@ -258,7 +258,7 @@ func (m *MockOpenAIClient) assessFraudRisk(req *models.BidRequest, historical []
 
 	// Check for suspicious user patterns
 	if len(historical) > 0 {
-		userCounts := make(map[string]int)
+		userCounts := make(map[uuid.UUID]int)
 		for _, bid := range historical {
 			userCounts[bid.UserID]++
 		}
