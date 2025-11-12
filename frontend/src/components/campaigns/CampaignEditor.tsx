@@ -1,5 +1,5 @@
 // frontend/src/components/campaigns/CampaignEditor.tsx
-"use client"; // REQUIRED: This enables all the hooks
+'use client'; // REQUIRED: This enables all the hooks
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";

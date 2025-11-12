@@ -1,5 +1,5 @@
 // frontend/src/app/dashboard/campaigns/edit/page.tsx
-"use client";
+'use client';
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { CampaignEditor } from "@/components/campaigns/CampaignEditor";

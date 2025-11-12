@@ -1,5 +1,5 @@
 // frontend/src/app/dashboard/analytics/page.tsx
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import {

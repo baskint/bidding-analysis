@@ -21,6 +21,7 @@ type Handler struct {
 	bidStore      *store.BidStore
 	campaignStore *store.CampaignStore
 	userStore     *store.UserStore
+	mlModelStore  *store.MLModelStore
 	predictor     *ml.Predictor
 	jwtSecret     string
 }
@@ -37,11 +38,13 @@ func NewHandler(bidStore *store.BidStore, campaignStore *store.CampaignStore, pr
 	// Initialize UserStore using the same database connection as other stores
 	db := bidStore.DB() // You'll need to add this method to BidStore
 	userStore := store.NewUserStore(db)
+	mlModelStore := store.NewMLModelStore(db)
 
 	return &Handler{
 		bidStore:      bidStore,
 		campaignStore: campaignStore,
 		userStore:     userStore,
+		mlModelStore:  mlModelStore,
 		predictor:     predictor,
 		jwtSecret:     jwtSecret,
 	}
@@ -109,6 +112,15 @@ func (h *Handler) SetupRoutes() http.Handler {
 	protected.HandleFunc("/analytics.getDailyTrends", h.getDailyTrends).Methods("GET", "POST")
 	protected.HandleFunc("/analytics.getCompetitiveAnalysis", h.getCompetitiveAnalysis).Methods("GET", "POST")
 	protected.HandleFunc("/analytics.getCampaignComparison", h.getCampaignComparison).Methods("GET", "POST")
+
+	// ML Model procedures
+	protected.HandleFunc("/mlModel.list", h.listMLModels).Methods("GET", "POST")
+	protected.HandleFunc("/mlModel.get", h.getMLModel).Methods("GET", "POST")
+	protected.HandleFunc("/mlModel.create", h.createMLModel).Methods("POST")
+	protected.HandleFunc("/mlModel.update", h.updateMLModel).Methods("POST")
+	protected.HandleFunc("/mlModel.delete", h.deleteMLModel).Methods("POST")
+	protected.HandleFunc("/mlModel.setDefault", h.setDefaultMLModel).Methods("POST")
+	protected.HandleFunc("/mlModel.getDefault", h.getDefaultMLModel).Methods("GET", "POST")
 
 	return router
 }

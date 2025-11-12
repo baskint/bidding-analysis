@@ -49,7 +49,7 @@ export interface AnalyticsData {
 }
 
 // Helper function to get auth headers
-const getAuthHeaders = (): Record<string, string> => {
+export const getAuthHeaders = (): Record<string, string> => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
   return {
     'Content-Type': 'application/json',
@@ -58,7 +58,7 @@ const getAuthHeaders = (): Record<string, string> => {
 };
 
 // Helper function to handle API responses
-const handleResponse = async (response: Response) => {
+export const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const error = await response.text();
     throw new Error(error || `API call failed: ${response.status}`);

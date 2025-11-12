@@ -1,5 +1,5 @@
 // frontend/src/app/dashboard/campaigns/new/page.tsx
-"use client";
+'use client';
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
