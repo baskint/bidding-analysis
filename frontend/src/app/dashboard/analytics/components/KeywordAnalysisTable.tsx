@@ -62,7 +62,7 @@ export function KeywordAnalysisTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {keywords.map((kw, idx) => (
+            {keywords.length > 0 && keywords?.map((kw, idx) => (
               <tr key={idx} className="hover:bg-slate-50">
                 <td className="py-3 font-medium text-slate-900">
                   {kw.keyword}
