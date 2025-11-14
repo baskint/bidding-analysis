@@ -15,6 +15,9 @@ DROP INDEX IF EXISTS idx_fraud_alerts_campaign_id;
 DROP INDEX IF EXISTS idx_fraud_alerts_detected_at;
 
 -- Drop tables (in reverse order of dependencies)
+DROP TABLE IF EXISTS blocked_entities;
+DROP TABLE IF EXISTS fraud_rules;       
+DROP TABLE IF EXISTS fraud_alerts
 DROP TABLE IF EXISTS model_metrics;
 DROP TABLE IF EXISTS fraud_alerts;
 DROP TABLE IF EXISTS campaign_metrics;

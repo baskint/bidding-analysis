@@ -6,8 +6,9 @@
 	],
 	"settings": {
 		"workbench.preferredDarkColorTheme": "Bearded Theme Milkshake Raspberry",
-		"workbench.colorTheme": "Bearded Theme Oceanic",
-		"workbench.iconTheme": "bearded-icons",
-		"makefile.configureOnOpen": true
+		"workbench.colorTheme": "Ayu Dark",
+		"workbench.iconTheme": "material-icon-theme",
+		"makefile.configureOnOpen": true,
+		"editor.fontSize": 16
 	}
 }

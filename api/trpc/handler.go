@@ -122,6 +122,15 @@ func (h *Handler) SetupRoutes() http.Handler {
 	protected.HandleFunc("/mlModel.setDefault", h.setDefaultMLModel).Methods("POST")
 	protected.HandleFunc("/mlModel.getDefault", h.getDefaultMLModel).Methods("GET", "POST")
 
+	// Fraud Detection procedures
+	protected.HandleFunc("/fraud.getOverview", h.getFraudOverview).Methods("GET", "POST")
+	protected.HandleFunc("/fraud.getAlerts", h.getRealFraudAlerts).Methods("GET", "POST")
+	protected.HandleFunc("/fraud.updateAlert", h.updateFraudAlert).Methods("POST")
+	protected.HandleFunc("/fraud.getTrends", h.getFraudTrends).Methods("GET", "POST")
+	protected.HandleFunc("/fraud.getDeviceAnalysis", h.getDeviceFraudAnalysis).Methods("GET", "POST")
+	protected.HandleFunc("/fraud.getGeoAnalysis", h.getGeoFraudAnalysis).Methods("GET", "POST")
+	protected.HandleFunc("/fraud.createAlert", h.createFraudAlert).Methods("POST")
+
 	return router
 }
 

@@ -130,6 +130,56 @@ CREATE TABLE model_metrics (
     UNIQUE(model_version, date)
 );
 
+-- Fraud rules table
+CREATE TABLE fraud_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id),
+    name VARCHAR(255) NOT NULL,
+    rule_type VARCHAR(50) NOT NULL,
+    conditions JSONB NOT NULL,
+    threshold DECIMAL(5,2),
+    severity INTEGER CHECK (severity BETWEEN 1 AND 10),
+    enabled BOOLEAN DEFAULT TRUE,
+    auto_block BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Blocklist table
+CREATE TABLE blocked_entities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id),
+    entity_type VARCHAR(20) NOT NULL, -- 'ip', 'device', 'user'
+    entity_value VARCHAR(255) NOT NULL,
+    reason TEXT,
+    blocked_by_rule_id UUID REFERENCES fraud_rules(id),
+    blocked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    permanent BOOLEAN DEFAULT FALSE,
+    created_by UUID REFERENCES users(id)
+);
+
+-- Fraud metrics aggregation table
+CREATE TABLE fraud_metrics (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id),
+    date DATE NOT NULL,
+    hour INTEGER,
+    fraud_attempts INTEGER DEFAULT 0,
+    blocked_bids INTEGER DEFAULT 0,
+    amount_saved DECIMAL(10,2) DEFAULT 0,
+    false_positives INTEGER DEFAULT 0,
+    alert_type VARCHAR(50),
+    campaign_id UUID REFERENCES campaigns(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, date, hour, alert_type, campaign_id)
+);
+
+CREATE INDEX idx_fraud_rules_user ON fraud_rules(user_id);
+CREATE INDEX idx_blocked_entities_user ON blocked_entities(user_id);
+CREATE INDEX idx_blocked_entities_type_value ON blocked_entities(entity_type, entity_value);
+CREATE INDEX idx_fraud_metrics_user_date ON fraud_metrics(user_id, date);
+
 -- Indexes for performance
 CREATE INDEX idx_bid_events_campaign_id ON bid_events(campaign_id);
 CREATE INDEX idx_bid_events_timestamp ON bid_events(timestamp);
