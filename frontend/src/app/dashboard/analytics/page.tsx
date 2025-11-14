@@ -1,7 +1,7 @@
 // frontend/src/app/dashboard/analytics/page.tsx
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   BarChart3,
   Globe,
@@ -26,6 +26,7 @@ import {
 import { PerformanceOverviewCard } from "./components/PerformanceOverviewCard";
 import { KeywordAnalysisTable } from "./components/KeywordAnalysisTable";
 import { DeviceBreakdownChart } from "./components/DeviceBreakdownChart";
+import { getDateRange } from "./helpers/getDateRange";
 
 // Date range selector component
 function DateRangeSelector({
@@ -370,67 +371,50 @@ export default function AnalysisPage() {
   const hourly: HourlyPerformance[] = [];
   const competitive: CompetitiveAnalysis[] = [];  
 
-  // Calculate date range
-  const getDateRange = () => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - parseInt(dateRange));
 
-    return {
-      start_date: start.toISOString().split("T")[0],
-      end_date: end.toISOString().split("T")[0],
-    };
-  };
+    const loadData = useCallback(async () => {
+        setLoading(true);
+        const dateParams = getDateRange(dateRange);
 
-  // Load all data
-  const loadData = async () => {
-    setLoading(true);
-    const dateParams = getDateRange();
+        try {
+            // Using Promise.all for parallel fetching
+            const [
+                perfData,
+                kwData,
+                deviceData,
+            ] = await Promise.all([
+                getPerformanceOverview(dateParams),
+                getKeywordAnalysis({ ...dateParams, limit: 20 }),
+                getDeviceBreakdown(dateParams),
+            ]);
 
-    try {
-      const [
-        perfData,
-        kwData,
-        deviceData,
-        // geoData,
-        // hourlyData,
-        // compData,
-      ] = await Promise.all([
-        getPerformanceOverview(dateParams),
-        getKeywordAnalysis({ ...dateParams, limit: 20 }),
-        getDeviceBreakdown(dateParams),
-        // getGeoBreakdown({ ...dateParams, limit: 20 }),
-        // getHourlyPerformance(dateParams),
-        // getCompetitiveAnalysis(dateParams),
-      ]);
+            setPerformanceMetrics(perfData);
+            setKeywords(kwData || []);
+            setDevices(deviceData || []);
+            
+        } catch (error) {
+            console.error("Failed to load analysis data:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [
+      dateRange
+    ]);
 
-      setPerformanceMetrics(perfData);
-      setKeywords(kwData || []);
-      setDevices(deviceData || []);
-      // setGeos(geoData || []);
-      // setHourly(hourlyData || []);
-      // setCompetitive(compData || []);
-    } catch (error) {
-      console.error("Failed to load analysis data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load data on mount and when date range changes
-  useEffect(() => {
-    loadData();
-  }, [dateRange]);
-
-  console.log({ devices });
+    // Load data on mount and when date range changes
+    // FIX: We now include the stable 'loadData' in the dependency array
+    // This satisfies the React linting rule.
+    useEffect(() => {
+        loadData();
+    }, [dateRange, loadData]);
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">
-            Campaign Analysis
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+            Campaign Analytics
           </h1>
           <p className="text-slate-600 mt-1">
             Deep dive into your bidding performance and insights

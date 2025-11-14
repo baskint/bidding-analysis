@@ -37,14 +37,18 @@ export function FraudTrendsChart({ trends, loading }: FraudTrendsChartProps) {
 
   // Aggregate by date
   const dateMap = new Map<string, { attempts: number; blocked: number; saved: number }>();
-  (trends && trends.length > 0) && trends?.forEach((trend) => {
-    const existing = dateMap.get(trend.date) || { attempts: 0, blocked: 0, saved: 0 };
-    dateMap.set(trend.date, {
-      attempts: existing.attempts + trend.fraud_attempts,
-      blocked: existing.blocked + trend.blocked_bids,
-      saved: existing.saved + trend.amount_saved,
+
+  // FIX: Replaced the conditional expression with an explicit 'if' block.
+  if (trends && trends.length > 0) {
+    trends.forEach((trend) => {
+      const existing = dateMap.get(trend.date) || { attempts: 0, blocked: 0, saved: 0 };
+      dateMap.set(trend.date, {
+        attempts: existing.attempts + trend.fraud_attempts,
+        blocked: existing.blocked + trend.blocked_bids,
+        saved: existing.saved + trend.amount_saved,
+      });
     });
-  });
+  }
 
   const sortedDates = Array.from(dateMap.keys()).sort();
   const maxAttempts = Math.max(...Array.from(dateMap.values()).map((v) => v.attempts));

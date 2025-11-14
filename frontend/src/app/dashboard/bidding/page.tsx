@@ -23,9 +23,9 @@ export default function BiddingPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 flex items-center">
             <Zap className="w-7 h-7 mr-3 text-blue-600" />
-            Live Bidding Test
+            Live Bidding
           </h1>
           <p className="text-gray-600 mt-1">
             Real-time bid optimization with AI-powered predictions

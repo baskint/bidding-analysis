@@ -9,6 +9,7 @@
 		"workbench.colorTheme": "Ayu Dark",
 		"workbench.iconTheme": "material-icon-theme",
 		"makefile.configureOnOpen": true,
-		"editor.fontSize": 16
+		"editor.fontSize": 16,
+		"editor.tabSize": 2
 	}
 }

@@ -258,7 +258,7 @@ export function FraudAlertsTable({ alerts, loading, onAlertUpdate }: FraudAlerts
   );
 }
 
-function Shield(props: any) {
+function Shield(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}

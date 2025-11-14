@@ -37,8 +37,6 @@ export function DeviceBreakdownChart({
     `${(value * 100).toFixed(1)}%`;
   const maxBids = Math.max(...devices.map((d) => d.totalBids), 1);
 
-  console.log(devices);
-
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
       <div className="flex items-center mb-6">

@@ -6,7 +6,6 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-   // Optional: Add if you have dynamic routes
   skipTrailingSlashRedirect: true,
 };
 

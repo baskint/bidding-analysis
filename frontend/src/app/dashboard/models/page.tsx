@@ -114,7 +114,6 @@ export default function ModelsPage() {
     return statusObj?.color || 'bg-gray-100 text-gray-800';
   };
 
-  console.log('models', models);
   if (loading && models.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -128,7 +127,7 @@ export default function ModelsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">ML Models</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">ML Models</h1>
           <p className="text-gray-600 mt-1">
             Configure and manage your machine learning models for bidding optimization
           </p>

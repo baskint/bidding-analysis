@@ -1,7 +1,7 @@
 // frontend/src/app/dashboard/fraud/page.tsx
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Shield, RefreshCw, Calendar } from "lucide-react";
 import {
   getFraudOverview,
@@ -30,11 +30,13 @@ export default function FraudPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [dateRange, setDateRange] = useState(30);
 
-  const fetchData = async (showRefreshing = false) => {
+  // FIX: Wrap fetchData in useCallback and include 'dateRange' in its dependencies.
+  const fetchData = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true);
     try {
       const [overviewData, alertsData, trendsData, deviceDataResp, geoDataResp] =
         await Promise.all([
+          // dateRange is used here, so it must be in useCallback's dependency array
           getFraudOverview(dateRange),
           getRealFraudAlerts({ limit: 50 }),
           getFraudTrends(dateRange),
@@ -53,18 +55,19 @@ export default function FraudPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [dateRange]); // Dependency: dateRange
 
+  // FIX: Include the stable 'fetchData' function in the useEffect dependencies.
   useEffect(() => {
     fetchData();
-  }, [dateRange]);
+  }, [dateRange, fetchData]); // Dependencies: dateRange (for re-fetch on change) and fetchData (to satisfy linter)
 
   const handleRefresh = () => {
     fetchData(true);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6 dark:bg-slate-900">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
@@ -73,7 +76,7 @@ export default function FraudPage() {
               <Shield className="w-8 h-8 text-red-600" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Fraud Detection</h1>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Fraud Detection</h1>
               <p className="text-slate-600">
                 Monitor and prevent fraudulent bidding activities
               </p>

@@ -37,7 +37,7 @@ export function Sidebar() {
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-900">BidAnalyzer</span>
+            <span className="text-xl font-bold text-slate-900">Bid Analyzer</span>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 // frontend/src/components/dashboard/Header.tsx
-'use client';;
+'use client';
 
 import { Bell, Search, LogOut } from "lucide-react";
 import Link from "next/link";
