@@ -33,11 +33,18 @@ export default function AlertsPage() {
       if (showRefreshing) setRefreshing(true);
       try {
         // Build filter params
-        const params: any = {};
+        const params: {
+          type?: AlertType;
+          severity?: AlertSeverity;
+          status?: AlertStatus;
+          limit?: number;
+        } = {
+          limit: 100,
+        };
+        
         if (selectedType !== "all") params.type = selectedType;
         if (selectedSeverity !== "all") params.severity = selectedSeverity;
         if (selectedStatus !== "all") params.status = selectedStatus;
-        params.limit = 100;
 
         const [alertsData, overviewData] = await Promise.all([
           getAlerts(params),

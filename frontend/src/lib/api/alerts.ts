@@ -42,7 +42,7 @@ export interface Alert {
   message: string;
   campaign_id?: string;
   campaign_name?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
   acknowledged_at?: string;

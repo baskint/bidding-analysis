@@ -1,5 +1,5 @@
 // frontend/src/app/dashboard/alerts/components/AlertsTable.tsx
-"use client";
+'use client';
 
 import { useState } from "react";
 import {
@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Target,
   CheckCircle,
-  Clock,
   Eye,
   XCircle,
   MessageSquare,
@@ -18,7 +17,6 @@ import {
 import {
   Alert,
   AlertType,
-  AlertSeverity,
   AlertStatus,
   getSeverityBadgeColor,
   getStatusBadgeColor,
@@ -134,7 +132,7 @@ export function AlertsTable({
           No Alerts
         </h3>
         <p className="text-slate-600">
-          You're all caught up! No alerts to display at the moment.
+          You&apos;re all caught up! No alerts to display at the moment.
         </p>
       </div>
     );
