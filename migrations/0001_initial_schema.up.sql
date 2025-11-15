@@ -175,6 +175,40 @@ CREATE TABLE fraud_metrics (
     UNIQUE(user_id, date, hour, alert_type, campaign_id)
 );
 
+CREATE TYPE alert_type AS ENUM ('fraud', 'budget', 'performance', 'model', 'system', 'campaign');
+CREATE TYPE alert_severity AS ENUM ('low', 'medium', 'high', 'critical');
+CREATE TYPE alert_status AS ENUM ('unread', 'read', 'acknowledged', 'resolved', 'dismissed');
+
+CREATE TABLE alerts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) NOT NULL,
+    type alert_type NOT NULL,
+    severity alert_severity NOT NULL,
+    status alert_status DEFAULT 'unread' NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    campaign_id UUID REFERENCES campaigns(id),
+    metadata JSONB,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    acknowledged_at TIMESTAMP WITH TIME ZONE,
+    resolved_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Indexes for performance
+CREATE INDEX idx_alerts_user_id ON alerts(user_id);
+CREATE INDEX idx_alerts_created_at ON alerts(created_at DESC);
+CREATE INDEX idx_alerts_status ON alerts(status);
+CREATE INDEX idx_alerts_severity ON alerts(severity);
+CREATE INDEX idx_alerts_type ON alerts(type);
+CREATE INDEX idx_alerts_campaign_id ON alerts(campaign_id) WHERE campaign_id IS NOT NULL;
+CREATE INDEX idx_alerts_user_status ON alerts(user_id, status, created_at DESC);
+
+-- Trigger to update updated_at
+CREATE TRIGGER update_alerts_updated_at BEFORE UPDATE ON alerts 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 CREATE INDEX idx_fraud_rules_user ON fraud_rules(user_id);
 CREATE INDEX idx_blocked_entities_user ON blocked_entities(user_id);
 CREATE INDEX idx_blocked_entities_type_value ON blocked_entities(entity_type, entity_value);

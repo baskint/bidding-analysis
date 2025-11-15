@@ -131,6 +131,12 @@ func (h *Handler) SetupRoutes() http.Handler {
 	protected.HandleFunc("/fraud.getGeoAnalysis", h.getGeoFraudAnalysis).Methods("GET", "POST")
 	protected.HandleFunc("/fraud.createAlert", h.createFraudAlert).Methods("POST")
 
+	// Alert procedures
+	protected.HandleFunc("/alerts.getAlerts", h.getAlerts).Methods("GET", "POST")
+	protected.HandleFunc("/alerts.getOverview", h.getAlertOverview).Methods("GET", "POST")
+	protected.HandleFunc("/alerts.updateStatus", h.updateAlertStatus).Methods("POST")
+	protected.HandleFunc("/alerts.bulkUpdate", h.bulkUpdateAlerts).Methods("POST")
+
 	return router
 }
 

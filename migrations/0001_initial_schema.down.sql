@@ -15,6 +15,11 @@ DROP INDEX IF EXISTS idx_fraud_alerts_campaign_id;
 DROP INDEX IF EXISTS idx_fraud_alerts_detected_at;
 
 -- Drop tables (in reverse order of dependencies)
+DROP TABLE IF EXISTS alerts CASCADE;
+DROP TYPE IF EXISTS alert_type;
+DROP TYPE IF EXISTS alert_severity;
+DROP TYPE IF EXISTS alert_status;
+
 DROP TABLE IF EXISTS blocked_entities;
 DROP TABLE IF EXISTS fraud_rules;       
 DROP TABLE IF EXISTS fraud_alerts
