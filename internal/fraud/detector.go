@@ -9,6 +9,7 @@ import (
 
 	"github.com/baskint/bidding-analysis/internal/models"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
 // DetectionType represents different fraud detection patterns
@@ -26,11 +27,11 @@ const (
 
 // FraudDetector handles fraud detection logic
 type FraudDetector struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 // NewFraudDetector creates a new fraud detector instance
-func NewFraudDetector(db *sql.DB) *FraudDetector {
+func NewFraudDetector(db *sqlx.DB) *FraudDetector {
 	return &FraudDetector{db: db}
 }
 

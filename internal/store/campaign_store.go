@@ -8,15 +8,16 @@ import (
 
 	"github.com/baskint/bidding-analysis/internal/models"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
 // CampaignStore handles database operations for campaign data
 type CampaignStore struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 // NewCampaignStore creates a new CampaignStore instance
-func NewCampaignStore(db *sql.DB) *CampaignStore {
+func NewCampaignStore(db *sqlx.DB) *CampaignStore {
 	return &CampaignStore{db: db}
 }
 
@@ -194,7 +195,7 @@ func (s *CampaignStore) GetCampaign(id uuid.UUID) (*models.Campaign, error) {
 }
 
 // GetDB returns the database connection (for internal use)
-func (s *CampaignStore) GetDB() *sql.DB {
+func (s *CampaignStore) GetDB() *sqlx.DB {
 	return s.db
 }
 

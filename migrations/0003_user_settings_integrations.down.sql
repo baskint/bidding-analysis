@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS webhook_events CASCADE;
+DROP TABLE IF EXISTS integration_sync_history CASCADE;
+DROP TABLE IF EXISTS integrations CASCADE;
+DROP TABLE IF EXISTS billing_info CASCADE;
+DROP TABLE IF EXISTS user_settings CASCADE;

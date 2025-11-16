@@ -10,16 +10,22 @@ import (
 
 	"github.com/baskint/bidding-analysis/internal/models"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
 // MLModelStore handles database operations for ML models
 type MLModelStore struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 // NewMLModelStore creates a new ML model store
-func NewMLModelStore(db *sql.DB) *MLModelStore {
+func NewMLModelStore(db *sqlx.DB) *MLModelStore {
 	return &MLModelStore{db: db}
+}
+
+// DB returns the database connection
+func (s *MLModelStore) DB() *sqlx.DB {
+	return s.db
 }
 
 // Create creates a new ML model
@@ -372,9 +378,4 @@ func (s *MLModelStore) SetAsDefault(ctx context.Context, id uuid.UUID, userID uu
 	}
 
 	return nil
-}
-
-// DB returns the database connection
-func (s *MLModelStore) DB() *sql.DB {
-	return s.db
 }

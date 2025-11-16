@@ -22,6 +22,7 @@ type Handler struct {
 	campaignStore *store.CampaignStore
 	userStore     *store.UserStore
 	mlModelStore  *store.MLModelStore
+	settingsStore *store.SettingsStore
 	predictor     *ml.Predictor
 	jwtSecret     string
 }
@@ -39,12 +40,14 @@ func NewHandler(bidStore *store.BidStore, campaignStore *store.CampaignStore, pr
 	db := bidStore.DB() // You'll need to add this method to BidStore
 	userStore := store.NewUserStore(db)
 	mlModelStore := store.NewMLModelStore(db)
+	settingsStore := store.NewSettingsStore(db)
 
 	return &Handler{
 		bidStore:      bidStore,
 		campaignStore: campaignStore,
 		userStore:     userStore,
 		mlModelStore:  mlModelStore,
+		settingsStore: settingsStore,
 		predictor:     predictor,
 		jwtSecret:     jwtSecret,
 	}
@@ -136,6 +139,22 @@ func (h *Handler) SetupRoutes() http.Handler {
 	protected.HandleFunc("/alerts.getOverview", h.getAlertOverview).Methods("GET", "POST")
 	protected.HandleFunc("/alerts.updateStatus", h.updateAlertStatus).Methods("POST")
 	protected.HandleFunc("/alerts.bulkUpdate", h.bulkUpdateAlerts).Methods("POST")
+
+	// Settings procedures
+	protected.HandleFunc("/settings.get", h.GetUserSettings).Methods("GET", "POST")
+	protected.HandleFunc("/settings.update", h.UpdateUserSettings).Methods("POST")
+	protected.HandleFunc("/settings.regenerateAPIKey", h.RegenerateAPIKey).Methods("POST")
+
+	// Integration procedures
+	protected.HandleFunc("/integrations.list", h.ListIntegrations).Methods("GET", "POST")
+	protected.HandleFunc("/integrations.get", h.GetIntegration).Methods("GET", "POST")
+	protected.HandleFunc("/integrations.create", h.CreateIntegration).Methods("POST")
+	protected.HandleFunc("/integrations.update", h.UpdateIntegration).Methods("POST")
+	protected.HandleFunc("/integrations.delete", h.DeleteIntegration).Methods("POST")
+	protected.HandleFunc("/integrations.test", h.TestIntegration).Methods("POST")
+
+	// Billing procedures
+	protected.HandleFunc("/billing.get", h.GetBillingInfo).Methods("GET", "POST")
 
 	return router
 }

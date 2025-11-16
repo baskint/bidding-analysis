@@ -1,27 +1,26 @@
 package store
 
-// Add this import at the top of bid_store.go if not already present:
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/baskint/bidding-analysis/internal/models"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
 // BidStore handles database operations for bid data
 type BidStore struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 // NewBidStore creates a new BidStore instance
-func NewBidStore(db *sql.DB) *BidStore {
+func NewBidStore(db *sqlx.DB) *BidStore {
 	return &BidStore{db: db}
 }
 
 // DB returns the underlying database connection for use by other stores
-func (s *BidStore) DB() *sql.DB {
+func (s *BidStore) DB() *sqlx.DB {
 	return s.db
 }
 

@@ -2,14 +2,14 @@
 package store
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
 type UserStore struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 type User struct {
@@ -20,7 +20,7 @@ type User struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-func NewUserStore(db *sql.DB) *UserStore {
+func NewUserStore(db *sqlx.DB) *UserStore {
 	return &UserStore{db: db}
 }
 

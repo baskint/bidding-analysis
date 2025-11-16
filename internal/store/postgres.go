@@ -1,16 +1,16 @@
 package store
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 )
 
 // NewPostgresDB creates a new PostgreSQL database connection
-func NewPostgresDB(databaseURL string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", databaseURL)
+func NewPostgresDB(databaseURL string) (*sqlx.DB, error) {
+	db, err := sqlx.Open("pgx", databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
