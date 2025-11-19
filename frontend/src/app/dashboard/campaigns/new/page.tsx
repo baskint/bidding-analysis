@@ -17,7 +17,7 @@ export default function NewCampaignPage() {
           Back to Campaigns
         </Link>
 
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-gray-100">
           Create New Campaign
         </h1>
         <p className="text-gray-600 mt-1">Set up a new advertising campaign</p>

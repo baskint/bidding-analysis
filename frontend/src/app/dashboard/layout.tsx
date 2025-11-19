@@ -12,7 +12,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* FIX: The outer container must be updated to use theme-aware background classes.
           1. Removed static gradient.
           2. Added light mode default background (bg-gray-50)
-         
           4. Added transition for a smooth visual switch.
         */}
         <div className='min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-500'>
@@ -21,7 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Sidebar />
 
             {/* Main Content */}
-           <div className='flex-1 flex flex-col min-h-screen ml-64 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100'>
+            <div className='flex-1 flex flex-col min-h-screen ml-64 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100'>
               <Header />
 
               {/* Page Content */}

@@ -33,29 +33,29 @@ CREATE TABLE bid_events (
     floor_price DECIMAL(8,4),
     won BOOLEAN DEFAULT FALSE,
     converted BOOLEAN DEFAULT FALSE,
-    
+
     -- User segment data
     segment_id VARCHAR(50),
     segment_category VARCHAR(50),
     engagement_score DECIMAL(3,2),
     conversion_probability DECIMAL(3,2),
-    
+
     -- Geo data
     country VARCHAR(2),
     region VARCHAR(100),
     city VARCHAR(100),
     latitude DECIMAL(10,8),
     longitude DECIMAL(11,8),
-    
+
     -- Device data
     device_type VARCHAR(20),
     os VARCHAR(50),
     browser VARCHAR(50),
     is_mobile BOOLEAN DEFAULT FALSE,
-    
+
     -- Keywords
     keywords TEXT[],
-    
+
     -- Timestamps
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -79,7 +79,7 @@ CREATE TABLE campaign_metrics (
     campaign_id UUID REFERENCES campaigns(id),
     date DATE NOT NULL,
     hour INTEGER, -- 0-23 for hourly aggregation
-    
+
     -- Metrics
     total_bids INTEGER DEFAULT 0,
     won_bids INTEGER DEFAULT 0,
@@ -87,16 +87,16 @@ CREATE TABLE campaign_metrics (
     total_spend DECIMAL(10,2) DEFAULT 0,
     impressions INTEGER DEFAULT 0,
     clicks INTEGER DEFAULT 0,
-    
+
     -- Calculated metrics
     win_rate DECIMAL(5,4),
     conversion_rate DECIMAL(5,4),
     average_bid DECIMAL(8,4),
     cost_per_conversion DECIMAL(8,4),
     return_on_ad_spend DECIMAL(8,4),
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
+
     UNIQUE(campaign_id, date, hour)
 );
 
@@ -118,15 +118,15 @@ CREATE TABLE model_metrics (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     model_version VARCHAR(20) NOT NULL,
     date DATE NOT NULL,
-    
+
     -- Accuracy metrics
     prediction_accuracy DECIMAL(5,4),
     mean_absolute_error DECIMAL(8,4),
     root_mean_square_error DECIMAL(8,4),
     total_predictions INTEGER,
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
+
     UNIQUE(model_version, date)
 );
 
@@ -206,7 +206,7 @@ CREATE INDEX idx_alerts_campaign_id ON alerts(campaign_id) WHERE campaign_id IS 
 CREATE INDEX idx_alerts_user_status ON alerts(user_id, status, created_at DESC);
 
 -- Trigger to update updated_at
-CREATE TRIGGER update_alerts_updated_at BEFORE UPDATE ON alerts 
+CREATE TRIGGER update_alerts_updated_at BEFORE UPDATE ON alerts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE INDEX idx_fraud_rules_user ON fraud_rules(user_id);
@@ -240,4 +240,3 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
 
 CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON campaigns 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    

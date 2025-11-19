@@ -153,8 +153,7 @@ export function CampaignForm({ initialCampaign, mode }: CampaignFormProps) {
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.name ? "border-red-500" : "border-gray-300"
-              }`}
+            className={`input-field ${errors.name ? "border-red-500" : "border-gray-300"}`}
             placeholder="e.g., Summer Sale 2024"
             required
           />
@@ -177,7 +176,7 @@ export function CampaignForm({ initialCampaign, mode }: CampaignFormProps) {
               name="status"
               value={formData.status}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="select-field"
             >
               <option value="active">Active</option>
               <option value="paused">Paused</option>
@@ -202,8 +201,7 @@ export function CampaignForm({ initialCampaign, mode }: CampaignFormProps) {
               name="budget"
               value={formData.budget}
               onChange={handleChange}
-              className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.budget ? "border-red-500" : "border-gray-300"
-                }`}
+              className="select-field"
               placeholder="10000.00"
               step="0.01"
               min="0"
@@ -233,8 +231,7 @@ export function CampaignForm({ initialCampaign, mode }: CampaignFormProps) {
               name="daily_budget"
               value={formData.daily_budget}
               onChange={handleChange}
-              className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.daily_budget ? "border-red-500" : "border-gray-300"
-                }`}
+              className="select-field"
               placeholder="500.00"
               step="0.01"
               min="0"
@@ -264,8 +261,7 @@ export function CampaignForm({ initialCampaign, mode }: CampaignFormProps) {
               name="target_cpa"
               value={formData.target_cpa}
               onChange={handleChange}
-              className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.target_cpa ? "border-red-500" : "border-gray-300"
-                }`}
+              className="select-field"
               placeholder="25.00"
               step="0.01"
               min="0"

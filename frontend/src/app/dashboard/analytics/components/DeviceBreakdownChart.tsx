@@ -9,7 +9,7 @@ interface DeviceBreakdownChartProps {
 export function DeviceBreakdownChart({
   devices,
   loading,
-}:DeviceBreakdownChartProps) {
+}: DeviceBreakdownChartProps) {
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -35,7 +35,8 @@ export function DeviceBreakdownChart({
 
   const formatPercent = (value: number) =>
     `${(value * 100).toFixed(1)}%`;
-  const maxBids = Math.max(...devices.map((d) => d.totalBids), 1);
+  const maxBids = devices && devices.length > 0
+    && Math.max(...devices.map((d) => d.totalBids), 1) || 1;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -47,7 +48,7 @@ export function DeviceBreakdownChart({
       </div>
 
       <div className="space-y-4">
-        {devices.map((device, idx) => (
+        {devices && devices.length > 0 && devices.map((device, idx) => (
           <div key={idx} className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-900">

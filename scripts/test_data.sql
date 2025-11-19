@@ -3,16 +3,16 @@
 
 -- Insert test fraud alerts
 INSERT INTO fraud_alerts (
-    id, 
-    campaign_id, 
-    alert_type, 
-    severity, 
-    description, 
-    affected_user_ids, 
-    detected_at, 
+    id,
+    campaign_id,
+    alert_type,
+    severity,
+    description,
+    affected_user_ids,
+    detected_at,
     status
 )
-SELECT 
+SELECT
     uuid_generate_v4(),
     c.id,
     (ARRAY['click_velocity', 'geo_anomaly', 'device_anomaly', 'ip_anomaly', 'bot_detection'])[floor(random() * 5 + 1)],
@@ -43,7 +43,7 @@ WHERE p.bid_event_id = be.id
   AND be.timestamp >= NOW() - interval '30 days';
 
 -- Verify the data was created
-SELECT 
+SELECT
     alert_type,
     COUNT(*) as count,
     AVG(severity) as avg_severity,
@@ -55,7 +55,7 @@ GROUP BY alert_type
 ORDER BY count DESC;
 
 -- Check fraud predictions
-SELECT 
+SELECT
     COUNT(*) as total_predictions,
     COUNT(*) FILTER (WHERE fraud_risk = true) as fraud_predictions,
     SUM(CASE WHEN fraud_risk = true THEN be.bid_price ELSE 0 END) as amount_saved
@@ -63,4 +63,3 @@ FROM predictions p
 JOIN bid_events be ON p.bid_event_id = be.id
 WHERE be.user_id = (SELECT id FROM users LIMIT 1)
   AND be.timestamp >= NOW() - interval '30 days';
-  

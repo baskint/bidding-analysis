@@ -107,12 +107,12 @@ func (h *Handler) getAlerts(w http.ResponseWriter, r *http.Request) {
 
 	// Build query with filters
 	query := `
-		SELECT 
+		SELECT
 			a.id, a.type, a.severity, a.status, a.title, a.message,
 			a.campaign_id, COALESCE(c.name, '') as campaign_name,
-			COALESCE(a.metadata, '{}') as metadata, 
+			COALESCE(a.metadata, '{}') as metadata,
 			a.created_at, a.updated_at,
-			a.acknowledged_at, a.resolved_at, 
+			a.acknowledged_at, a.resolved_at,
 			COALESCE(a.notes, '') as notes
 		FROM alerts a
 		LEFT JOIN campaigns c ON a.campaign_id = c.id
@@ -246,15 +246,17 @@ func (h *Handler) getAlertOverview(w http.ResponseWriter, r *http.Request) {
 	startDate := time.Now().AddDate(0, 0, -req.Days)
 
 	// Get total and unread counts
+	// Get total and unread counts
 	var totalAlerts, unreadAlerts, criticalAlerts int
 	query := `
-		SELECT 
-			COUNT(*) as total,
-			SUM(CASE WHEN status = 'unread' THEN 1 ELSE 0 END) as unread,
-			SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical
-		FROM alerts
-		WHERE user_id = $1 AND created_at >= $2
-	`
+    SELECT
+        COUNT(*) as total,
+        COALESCE(SUM(CASE WHEN status = 'unread' THEN 1 ELSE 0 END), 0) as unread,
+        COALESCE(SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END), 0) as critical
+    FROM alerts
+    WHERE user_id = $1 AND created_at >= $2
+`
+
 	err = h.bidStore.DB().QueryRowContext(ctx, query, userUUID, startDate).Scan(
 		&totalAlerts, &unreadAlerts, &criticalAlerts,
 	)
@@ -304,7 +306,7 @@ func (h *Handler) getAlertOverview(w http.ResponseWriter, r *http.Request) {
 
 	// Get recent trend (daily counts)
 	rows3, err := h.bidStore.DB().QueryContext(ctx, `
-		SELECT 
+		SELECT
 			DATE(created_at) as date,
 			COUNT(*) as count
 		FROM alerts

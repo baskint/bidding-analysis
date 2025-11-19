@@ -18,9 +18,9 @@ export default function RootLayout({
       {/* 2. Apply theme-aware background to the body using slate for dark mode */}
       <body className="bg-gray-50">
         {/* 3. Wrap your providers with ThemeProvider at the top level */}
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
