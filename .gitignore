@@ -1,3 +1,6 @@
+# ============================================
+# Go
+# ============================================
 
 # Binaries
 *.exe
@@ -17,17 +20,127 @@
 # Go workspace file
 go.work
 
-# IDE files
+# Generated files
+api/proto/generated/
+vendor/
+
+# ============================================
+# Python & ML
+# ============================================
+
+# Python virtual environments
+scripts/venv/
+scripts/py_scripts/venv/
+venv/
+env/
+.venv/
+ENV/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.pyo
+*.pyd
+.pyc
+
+# Trained models (large binary files)
+scripts/py_scripts/models/*.onnx
+scripts/py_scripts/models/*.json
+scripts/py_scripts/models/*_encoders.json
+scripts/py_scripts/models/*.pkl
+scripts/py_scripts/models/*.h5
+scripts/py_scripts/models/*.joblib
+models/*.onnx
+models/*.json
+*.onnx
+*.pkl
+*.h5
+
+# Training artifacts and logs
+scripts/py_scripts/logs/
+scripts/py_scripts/data/
+scripts/py_scripts/tmp/
+
+# ML experiment tracking
+mlruns/
+.mlflow/
+wandb/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Python distribution / packaging
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# ============================================
+# IDE and Editors
+# ============================================
+
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.vs/
 
-# OS files
+# ============================================
+# OS Files
+# ============================================
+
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 
-# Environment and secrets
+# ============================================
+# Environment and Secrets
+# ============================================
+
 .env
 .env.local
 .env.gcp
@@ -38,30 +151,84 @@ Thumbs.db
 *.key
 *.crt
 
-# Database
-*.db
-*.sqlite3
-
-# Logs
-*.log
-logs/
-
-# Docker
-.docker/
-
-# Generated files
-api/proto/generated/
-vendor/
-
-# Configuration files with secrets
+# Local configuration files with secrets
 config/local.yaml
 config/production.yaml
 config/staging.yaml
+scripts/py_scripts/config_local.yaml
 
-# Temporary files
+# ============================================
+# Database
+# ============================================
+
+*.db
+*.sqlite3
+*.sqlite
+
+# ============================================
+# Logs
+# ============================================
+
+*.log
+logs/
+*.log.*
+log/
+
+# ============================================
+# Docker
+# ============================================
+
+.docker/
+
+# ============================================
+# Temporary Files
+# ============================================
+
 tmp/
 temp/
+*.tmp
+*.bak
+*.backup
+*~
+
+# ============================================
+# Frontend
+# ============================================
+
 # Firebase hosting files
 frontend/.firebase/hosting*
-
 frontend/.yarn/
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+frontend/build/
+frontend/dist/
+frontend/.next/
+frontend/out/
+
+# ============================================
+# Data Files (can be large)
+# ============================================
+
+*.csv
+*.parquet
+*.arrow
+*.feather
+data/
+dataset/
+datasets/
+
+# ============================================
+# Archives
+# ============================================
+
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
