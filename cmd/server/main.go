@@ -56,11 +56,39 @@ func main() {
 	log.Printf("✅ Stores initialized")
 
 	// Step 4: Initialize ML predictor
-	log.Printf("🤖 Initializing ML predictor...")
-	log.Printf("OpenAI API key exists: %t", cfg.OpenAI.APIKey != "")
+	// log.Printf("🤖 Initializing ML predictor...")
+	// log.Printf("OpenAI API key exists: %t", cfg.OpenAI.APIKey != "")
 
-	predictor := ml.NewPredictor(cfg.OpenAI.APIKey, bidStore)
-	log.Printf("✅ ML predictor initialized")
+	// predictor := ml.NewPredictor(cfg.OpenAI.APIKey, bidStore)
+	// log.Printf("✅ ML predictor initialized")
+
+	// Initialize ML predictor
+	// Initialize ML predictor (with fallback)
+	log.Printf("🤖 Initializing ML predictor...")
+
+	var predictor *ml.Predictor
+
+	// Try to load ML model first
+	mlPredictor, err := ml.NewMLPredictor(
+		"models/bid_optimizer_latest.ubj",
+		"models/bid_optimizer_latest_encoders.json",
+		bidStore,
+	)
+
+	if err != nil {
+		log.Printf("⚠️  ML model loading failed: %v", err)
+		log.Printf("🔄 Falling back to OpenAI predictor...")
+
+		// Fallback to OpenAI if ML model fails
+		if cfg.OpenAI.APIKey == "" {
+			log.Fatalf("❌ No ML model and no OpenAI API key configured")
+		}
+		predictor = ml.NewPredictor(cfg.OpenAI.APIKey, bidStore)
+		log.Printf("✅ OpenAI predictor initialized (fallback)")
+	} else {
+		predictor = mlPredictor
+		log.Printf("✅ ML predictor loaded successfully!")
+	}
 
 	// Step 5: Initialize tRPC handler
 	log.Printf("🌐 Initializing tRPC handler...")
