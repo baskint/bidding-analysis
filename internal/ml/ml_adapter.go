@@ -3,6 +3,7 @@ package ml
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/baskint/bidding-analysis/internal/mlpredictor"
@@ -11,19 +12,23 @@ import (
 	"github.com/google/uuid"
 )
 
-// MLPredictor wraps the new mlpredictor.BidPredictor to work with existing code
+// MLPredictor wraps the ML predictor to work with existing code
 type MLPredictor struct {
-	predictor *mlpredictor.BidPredictor
+	predictor mlpredictor.Predictor
 	bidStore  *store.BidStore
 }
 
-// NewMLPredictor creates a predictor using the ML model
+// NewMLPredictor creates a predictor using the ML model (ONNX)
 func NewMLPredictor(modelPath, encodersPath string, bidStore *store.BidStore) (*Predictor, error) {
-	// Load the ML model
-	mlPred, err := mlpredictor.NewBidPredictor(modelPath, encodersPath)
+	// Try ONNX predictor (pure Go, no Python needed!)
+	log.Println("🤖 Loading ONNX model...")
+
+	mlPred, err := mlpredictor.NewBidPredictorONNX(modelPath, encodersPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load ML model: %w", err)
+		return nil, fmt.Errorf("failed to load ONNX model: %w", err)
 	}
+
+	log.Println("✅ ONNX model loaded successfully!")
 
 	// Wrap in adapter
 	adapter := &MLPredictor{
@@ -31,11 +36,10 @@ func NewMLPredictor(modelPath, encodersPath string, bidStore *store.BidStore) (*
 		bidStore:  bidStore,
 	}
 
-	// Return as Predictor interface
 	return &Predictor{
-		openaiClient: adapter, // Use adapter as AIClient
+		openaiClient: adapter,
 		bidStore:     bidStore,
-		modelVersion: "ml-v1.0.0",
+		modelVersion: "ml-onnx-v1.0.0",
 	}, nil
 }
 
@@ -50,12 +54,12 @@ func (m *MLPredictor) PredictBidPrice(ctx context.Context, req *models.BidReques
 		return nil, fmt.Errorf("ML prediction failed: %w", err)
 	}
 
-	// Build response matching your models.BidResponse
+	// Build response
 	response := &models.BidResponse{
 		BidPrice:     bidPrice,
-		Confidence:   0.90, // ML model has high confidence
+		Confidence:   0.90,
 		Strategy:     "ml_optimized",
-		FraudRisk:    false, // Could enhance with fraud detection
+		FraudRisk:    false,
 		PredictionID: uuid.New().String(),
 	}
 
@@ -64,9 +68,6 @@ func (m *MLPredictor) PredictBidPrice(ctx context.Context, req *models.BidReques
 
 // AnalyzeAudienceSegment implements AIClient interface
 func (m *MLPredictor) AnalyzeAudienceSegment(ctx context.Context, bidEvents []*models.BidEvent) (*AudienceAnalysis, error) {
-	// ML model doesn't do detailed audience analysis yet
-	// Return basic analysis based on the bid events
-
 	if len(bidEvents) == 0 {
 		return &AudienceAnalysis{
 			Segments: []string{},
@@ -74,7 +75,6 @@ func (m *MLPredictor) AnalyzeAudienceSegment(ctx context.Context, bidEvents []*m
 		}, nil
 	}
 
-	// Calculate basic metrics
 	var conversions int
 	deviceTypes := make(map[string]int)
 	segments := make(map[string]bool)
@@ -84,21 +84,17 @@ func (m *MLPredictor) AnalyzeAudienceSegment(ctx context.Context, bidEvents []*m
 			conversions++
 		}
 		deviceTypes[event.DeviceType]++
-
-		// Track unique segment categories
 		if event.SegmentCategory != "" {
 			segments[event.SegmentCategory] = true
 		}
 	}
 
 	conversionRate := float64(conversions) / float64(len(bidEvents))
-
 	insights := []string{
 		fmt.Sprintf("Analyzed %d bid events", len(bidEvents)),
 		fmt.Sprintf("Conversion rate: %.2f%%", conversionRate*100),
 	}
 
-	// Find top device type
 	var topDevice string
 	var maxCount int
 	for device, count := range deviceTypes {
@@ -111,7 +107,6 @@ func (m *MLPredictor) AnalyzeAudienceSegment(ctx context.Context, bidEvents []*m
 		insights = append(insights, fmt.Sprintf("Top performing device: %s", topDevice))
 	}
 
-	// Build segments list
 	segmentList := make([]string, 0, len(segments))
 	for segment := range segments {
 		segmentList = append(segmentList, segment)
@@ -125,9 +120,6 @@ func (m *MLPredictor) AnalyzeAudienceSegment(ctx context.Context, bidEvents []*m
 
 // DetectFraud implements AIClient interface
 func (m *MLPredictor) DetectFraud(ctx context.Context, bidEvents []*models.BidEvent) (*FraudAnalysis, error) {
-	// ML model doesn't do fraud detection yet
-	// Return basic rule-based fraud check
-
 	if len(bidEvents) < 10 {
 		return &FraudAnalysis{
 			FraudDetected: false,
@@ -137,7 +129,6 @@ func (m *MLPredictor) DetectFraud(ctx context.Context, bidEvents []*models.BidEv
 		}, nil
 	}
 
-	// Basic fraud indicators
 	userActivity := make(map[uuid.UUID]int)
 	userConversions := make(map[uuid.UUID]int)
 
@@ -148,17 +139,15 @@ func (m *MLPredictor) DetectFraud(ctx context.Context, bidEvents []*models.BidEv
 		}
 	}
 
-	// Check for abnormally high activity
 	var suspiciousCount int
 	var patterns []string
 
 	for userID, count := range userActivity {
-		if count > 50 { // More than 50 bids from one user
+		if count > 50 {
 			suspiciousCount++
 			patterns = append(patterns, fmt.Sprintf("User %s: %d bids (abnormally high)", userID, count))
 		}
 
-		// Check for suspiciously high conversion rates
 		conversions := userConversions[userID]
 		if conversions > 0 {
 			convRate := float64(conversions) / float64(count)
@@ -170,7 +159,6 @@ func (m *MLPredictor) DetectFraud(ctx context.Context, bidEvents []*models.BidEv
 
 	fraudDetected := suspiciousCount > 0
 	severity := suspiciousCount
-
 	if severity > 10 {
 		severity = 10
 	}
@@ -190,13 +178,9 @@ func (m *MLPredictor) DetectFraud(ctx context.Context, bidEvents []*models.BidEv
 // extractFeatures converts your BidRequest to mlpredictor.BidFeatures
 func (m *MLPredictor) extractFeatures(req *models.BidRequest, historicalData []*models.BidEvent) mlpredictor.BidFeatures {
 	now := time.Now()
-
-	// Calculate historical stats from provided data
 	stats := m.calculateHistoricalStats(historicalData)
 
-	// Extract values from request
 	floorPrice := req.FloorPrice
-
 	engagementScore := 0.5
 	if req.UserSegment.EngagementScore > 0 {
 		engagementScore = req.UserSegment.EngagementScore
@@ -223,32 +207,22 @@ func (m *MLPredictor) extractFeatures(req *models.BidRequest, historicalData []*
 	}
 
 	return mlpredictor.BidFeatures{
-		// Core features from request
-		FloorPrice:            floorPrice,
-		EngagementScore:       engagementScore,
-		ConversionProbability: conversionProb,
-
-		// Historical features from provided data
-		HistoricalWinRate:     stats.WinRate,
-		HistoricalAvgBid:      stats.AvgBid,
-		HistoricalAvgWinPrice: stats.AvgWinPrice,
-
-		// Categorical features
-		DeviceType:      deviceType,
-		SegmentCategory: segmentCategory,
-		Country:         country,
-
-		// Time features
-		HourOfDay: now.Hour(),
-		DayOfWeek: int(now.Weekday()),
-
-		// Campaign features
+		FloorPrice:                floorPrice,
+		EngagementScore:           engagementScore,
+		ConversionProbability:     conversionProb,
+		HistoricalWinRate:         stats.WinRate,
+		HistoricalAvgBid:          stats.AvgBid,
+		HistoricalAvgWinPrice:     stats.AvgWinPrice,
+		DeviceType:                deviceType,
+		SegmentCategory:           segmentCategory,
+		Country:                   country,
+		HourOfDay:                 now.Hour(),
+		DayOfWeek:                 int(now.Weekday()),
 		CampaignSpendLast7d:       stats.SpendLast7d,
 		CampaignConversionsLast7d: stats.ConversionsLast7d,
 	}
 }
 
-// HistoricalStats holds aggregated campaign statistics
 type HistoricalStats struct {
 	WinRate           float64
 	AvgBid            float64
@@ -257,10 +231,8 @@ type HistoricalStats struct {
 	ConversionsLast7d float64
 }
 
-// calculateHistoricalStats computes statistics from historical bid events
 func (m *MLPredictor) calculateHistoricalStats(bidEvents []*models.BidEvent) HistoricalStats {
 	if len(bidEvents) == 0 {
-		// Return defaults if no historical data
 		return HistoricalStats{
 			WinRate:           0.4,
 			AvgBid:            2.5,
@@ -270,14 +242,7 @@ func (m *MLPredictor) calculateHistoricalStats(bidEvents []*models.BidEvent) His
 		}
 	}
 
-	var (
-		totalBids        float64
-		totalWins        float64
-		totalBidAmount   float64
-		totalWinAmount   float64
-		totalSpend       float64
-		totalConversions float64
-	)
+	var totalBids, totalWins, totalBidAmount, totalWinAmount, totalSpend, totalConversions float64
 
 	for _, event := range bidEvents {
 		totalBids++
@@ -313,7 +278,6 @@ func (m *MLPredictor) calculateHistoricalStats(bidEvents []*models.BidEvent) His
 	return stats
 }
 
-// Close cleans up the ML predictor
 func (m *MLPredictor) Close() error {
 	if m.predictor != nil {
 		return m.predictor.Close()

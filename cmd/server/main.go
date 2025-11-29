@@ -66,11 +66,8 @@ func main() {
 	// Initialize ML predictor (with fallback)
 	log.Printf("🤖 Initializing ML predictor...")
 
-	var predictor *ml.Predictor
-
-	// Try to load ML model first
 	mlPredictor, err := ml.NewMLPredictor(
-		"models/bid_optimizer_latest.ubj",
+		"models/bid_optimizer_latest.onnx", // ✅ ONNX
 		"models/bid_optimizer_latest_encoders.json",
 		bidStore,
 	)

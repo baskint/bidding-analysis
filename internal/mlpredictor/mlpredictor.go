@@ -1,4 +1,3 @@
-// Package mlpredictor provides ML-based bid prediction using XGBoost models
 package mlpredictor
 
 import (
@@ -6,50 +5,24 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
 
-	"github.com/dmitryikh/leaves"
+	"github.com/owulveryck/onnx-go"
+	"github.com/owulveryck/onnx-go/backend/x/gorgonnx"
+	"gorgonia.org/tensor"
 )
 
-// BidPredictor handles ML-based bid predictions
-type BidPredictor struct {
-	model        *leaves.Ensemble
+// BidPredictorONNXSimple uses pure Go ONNX library (no C dependencies)
+type BidPredictorONNXSimple struct {
+	backend      *gorgonnx.Graph
 	encoders     map[string]map[string]float64
 	mu           sync.RWMutex
 	modelPath    string
 	encodersPath string
-	lastReload   time.Time
 }
 
-// BidFeatures represents the input features for bid prediction
-type BidFeatures struct {
-	// Core features
-	FloorPrice            float64
-	EngagementScore       float64
-	ConversionProbability float64
-
-	// Historical features
-	HistoricalWinRate     float64
-	HistoricalAvgBid      float64
-	HistoricalAvgWinPrice float64
-
-	// Categorical features (will be encoded)
-	DeviceType      string
-	SegmentCategory string
-	Country         string
-
-	// Time features
-	HourOfDay int
-	DayOfWeek int
-
-	// Campaign features
-	CampaignSpendLast7d       float64
-	CampaignConversionsLast7d float64
-}
-
-// NewBidPredictor creates a new bid predictor
-func NewBidPredictor(modelPath, encodersPath string) (*BidPredictor, error) {
-	p := &BidPredictor{
+// NewBidPredictorONNXSimple creates predictor using pure Go ONNX
+func NewBidPredictorONNXSimple(modelPath, encodersPath string) (*BidPredictorONNXSimple, error) {
+	p := &BidPredictorONNXSimple{
 		modelPath:    modelPath,
 		encodersPath: encodersPath,
 	}
@@ -61,17 +34,27 @@ func NewBidPredictor(modelPath, encodersPath string) (*BidPredictor, error) {
 	return p, nil
 }
 
-// LoadModel loads the XGBoost model and feature encoders
-func (p *BidPredictor) LoadModel() error {
+// LoadModel loads the ONNX model and feature encoders
+func (p *BidPredictorONNXSimple) LoadModel() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	// Load XGBoost model (JSON format from Python)
-	model, err := leaves.XGEnsembleFromFile(p.modelPath, true)
+	// Load ONNX model
+	backend := gorgonnx.NewGraph()
+	model := onnx.NewModel(backend)
+
+	modelFile, err := os.Open(p.modelPath)
 	if err != nil {
-		return fmt.Errorf("failed to load XGBoost model: %w", err)
+		return fmt.Errorf("failed to open model file: %w", err)
 	}
-	p.model = model
+	defer modelFile.Close()
+
+	err = model.UnmarshalBinary(modelFile)
+	if err != nil {
+		return fmt.Errorf("failed to load ONNX model: %w", err)
+	}
+
+	p.backend = backend
 
 	// Load feature encoders
 	encodersData, err := os.ReadFile(p.encodersPath)
@@ -83,133 +66,121 @@ func (p *BidPredictor) LoadModel() error {
 		return fmt.Errorf("failed to parse encoders: %w", err)
 	}
 
-	p.lastReload = time.Now()
-
 	return nil
 }
 
 // Predict returns the optimal bid for given features
-func (p *BidPredictor) Predict(features BidFeatures) (float64, error) {
+func (p *BidPredictorONNXSimple) Predict(features BidFeatures) (float64, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	if p.model == nil {
+	if p.backend == nil {
 		return 0, fmt.Errorf("model not loaded")
 	}
 
-	// Convert features to float array in correct order
-	// Order must match training: see FEATURE_COLUMNS in train_model.py
-	featureVector := []float64{
-		features.FloorPrice,                                           // 0: floor_price
-		features.EngagementScore,                                      // 1: engagement_score
-		features.ConversionProbability,                                // 2: conversion_probability
-		features.HistoricalWinRate,                                    // 3: historical_win_rate
-		features.HistoricalAvgBid,                                     // 4: historical_avg_bid
-		features.HistoricalAvgWinPrice,                                // 5: historical_avg_win_price
-		p.encodeFeature("device_type", features.DeviceType),           // 6: device_type_encoded
-		p.encodeFeature("segment_category", features.SegmentCategory), // 7: segment_category_encoded
-		float64(features.HourOfDay),                                   // 8: hour_of_day
-		float64(features.DayOfWeek),                                   // 9: day_of_week
-		p.encodeFeature("country", features.Country),                  // 10: country_encoded
-		features.CampaignSpendLast7d,                                  // 11: campaign_spend_last_7d
-		features.CampaignConversionsLast7d,                            // 12: campaign_conversions_last_7d
+	// Convert features to float32 array
+	inputData := []float32{
+		float32(features.FloorPrice),
+		float32(features.EngagementScore),
+		float32(features.ConversionProbability),
+		float32(features.HistoricalWinRate),
+		float32(features.HistoricalAvgBid),
+		float32(features.HistoricalAvgWinPrice),
+		float32(p.encodeFeature("device_type", features.DeviceType)),
+		float32(p.encodeFeature("segment_category", features.SegmentCategory)),
+		float32(features.HourOfDay),
+		float32(features.DayOfWeek),
+		float32(p.encodeFeature("country", features.Country)),
+		float32(features.CampaignSpendLast7d),
+		float32(features.CampaignConversionsLast7d),
 	}
 
-	// Make prediction
-	prediction := p.model.PredictSingle(featureVector, 0)
+	// Create input tensor
+	inputTensor := tensor.New(
+		tensor.WithShape(1, 13),
+		tensor.WithBacking(inputData),
+	)
 
-	// Ensure prediction is at least above floor price
+	// Set input
+	err := p.backend.SetInput(0, inputTensor)
+	if err != nil {
+		return 0, fmt.Errorf("failed to set input: %w", err)
+	}
+
+	// Run inference
+	err = p.backend.Run()
+	if err != nil {
+		return 0, fmt.Errorf("inference failed: %w", err)
+	}
+
+	// Get output
+	output, err := p.backend.GetOutputTensors()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get output: %w", err)
+	}
+
+	if len(output) == 0 {
+		return 0, fmt.Errorf("no output from model")
+	}
+
+	// Extract prediction
+	outputData := output[0].Data().([]float32)
+	if len(outputData) == 0 {
+		return 0, fmt.Errorf("empty output")
+	}
+
+	prediction := float64(outputData[0])
+
+	// Ensure above floor price
 	if prediction < features.FloorPrice {
-		prediction = features.FloorPrice * 1.01 // 1% above floor
+		prediction = features.FloorPrice * 1.01
 	}
 
 	return prediction, nil
 }
 
-// PredictBatch makes predictions for multiple bid requests efficiently
-func (p *BidPredictor) PredictBatch(batch []BidFeatures) ([]float64, error) {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	if p.model == nil {
-		return nil, fmt.Errorf("model not loaded")
-	}
-
+// PredictBatch makes predictions for multiple bid requests
+func (p *BidPredictorONNXSimple) PredictBatch(batch []BidFeatures) ([]float64, error) {
 	predictions := make([]float64, len(batch))
-
 	for i, features := range batch {
-		featureVector := []float64{
-			features.FloorPrice,
-			features.EngagementScore,
-			features.ConversionProbability,
-			features.HistoricalWinRate,
-			features.HistoricalAvgBid,
-			features.HistoricalAvgWinPrice,
-			p.encodeFeature("device_type", features.DeviceType),
-			p.encodeFeature("segment_category", features.SegmentCategory),
-			float64(features.HourOfDay),
-			float64(features.DayOfWeek),
-			p.encodeFeature("country", features.Country),
-			features.CampaignSpendLast7d,
-			features.CampaignConversionsLast7d,
+		pred, err := p.Predict(features)
+		if err != nil {
+			return nil, fmt.Errorf("batch prediction failed at index %d: %w", i, err)
 		}
-
-		prediction := p.model.PredictSingle(featureVector, 0)
-
-		// Ensure above floor
-		if prediction < features.FloorPrice {
-			prediction = features.FloorPrice * 1.01
-		}
-
-		predictions[i] = prediction
+		predictions[i] = pred
 	}
-
 	return predictions, nil
 }
 
-// encodeFeature encodes a categorical feature using frequency encoding
-func (p *BidPredictor) encodeFeature(featureName, value string) float64 {
+// encodeFeature encodes a categorical feature
+func (p *BidPredictorONNXSimple) encodeFeature(featureName, value string) float64 {
 	if encoder, ok := p.encoders[featureName]; ok {
 		if encoded, ok := encoder[value]; ok {
 			return encoded
 		}
 	}
-	// Return 0 for unknown categories (will be handled gracefully)
 	return 0.0
 }
 
-// GetModelInfo returns information about the loaded model
-func (p *BidPredictor) GetModelInfo() map[string]interface{} {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	info := map[string]interface{}{
+// GetModelInfo returns model information
+func (p *BidPredictorONNXSimple) GetModelInfo() map[string]interface{} {
+	return map[string]interface{}{
 		"model_path":    p.modelPath,
 		"encoders_path": p.encodersPath,
-		"last_reload":   p.lastReload,
-		"model_loaded":  p.model != nil,
+		"model_loaded":  p.backend != nil,
+		"model_type":    "onnx_pure_go",
 	}
-
-	if p.model != nil {
-		info["n_features"] = p.model.NFeatures()
-		info["n_outputs"] = p.model.NOutputGroups()
-	}
-
-	return info
 }
 
-// ReloadModel reloads the model from disk (useful for hot-swapping)
-func (p *BidPredictor) ReloadModel() error {
+// ReloadModel reloads the model
+func (p *BidPredictorONNXSimple) ReloadModel() error {
 	return p.LoadModel()
 }
 
 // Close cleans up resources
-func (p *BidPredictor) Close() error {
+func (p *BidPredictorONNXSimple) Close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-
-	p.model = nil
-	p.encoders = nil
-
+	p.backend = nil
 	return nil
 }
