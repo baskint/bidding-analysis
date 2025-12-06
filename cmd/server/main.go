@@ -1,4 +1,4 @@
-// cmd\server\main.go
+// cmd/server/main.go
 package main
 
 import (
@@ -57,10 +57,38 @@ func main() {
 
 	// Step 4: Initialize ML predictor
 	log.Printf("🤖 Initializing ML predictor...")
-	log.Printf("OpenAI API key exists: %t", cfg.OpenAI.APIKey != "")
-
-	predictor := ml.NewPredictor(cfg.OpenAI.APIKey, bidStore)
-	log.Printf("✅ ML predictor initialized")
+	
+	var predictor *ml.Predictor
+	
+	// Get ML service URL from environment (set by Cloud Run)
+	mlServiceURL := os.Getenv("ML_SERVICE_URL")
+	
+	if mlServiceURL != "" {
+		// Use ML service
+		log.Printf("Using ML service at: %s", mlServiceURL)
+		mlPredictor, err := ml.NewMLPredictor(
+			mlServiceURL,
+			"", // encoders not needed for HTTP
+			bidStore,
+		)
+		
+		if err != nil {
+			log.Printf("⚠️  ML service connection failed: %v", err)
+			log.Printf("🔄 Falling back to OpenAI predictor...")
+			predictor = ml.NewPredictor(cfg.OpenAI.APIKey, bidStore)
+		} else {
+			predictor = mlPredictor
+			log.Printf("✅ ML service connected successfully!")
+		}
+	} else {
+		// No ML service URL, use OpenAI
+		log.Printf("No ML_SERVICE_URL set, using OpenAI predictor")
+		if cfg.OpenAI.APIKey == "" {
+			log.Printf("⚠️  No OpenAI API key configured")
+		}
+		predictor = ml.NewPredictor(cfg.OpenAI.APIKey, bidStore)
+		log.Printf("✅ OpenAI predictor initialized")
+	}
 
 	// Step 5: Initialize tRPC handler
 	log.Printf("🌐 Initializing tRPC handler...")

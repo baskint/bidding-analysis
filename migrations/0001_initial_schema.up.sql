@@ -196,6 +196,46 @@ CREATE TABLE alerts (
     resolved_at TIMESTAMP WITH TIME ZONE
 );
 
+-- Create table for ML model metadata
+CREATE TABLE IF NOT EXISTS ml_model_metadata (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- Model identification
+    model_path VARCHAR(500) NOT NULL,
+    model_type VARCHAR(100),
+
+    -- Performance metrics
+    train_rmse DECIMAL(10,6),
+    val_rmse DECIMAL(10,6),
+    train_r2 DECIMAL(10,6),
+    val_r2 DECIMAL(10,6),
+    train_mae DECIMAL(10,6),
+    val_mae DECIMAL(10,6),
+
+    -- Feature importance (JSON)
+    feature_importance JSONB,
+    -- Training metadata
+    training_samples INTEGER,
+    validation_samples INTEGER,
+    hyperparameters JSONB,
+
+    -- Deployment tracking
+    deployed BOOLEAN DEFAULT FALSE,
+    deployment_date TIMESTAMP WITH TIME ZONE,
+
+    -- Timestamps
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for common queries
+CREATE INDEX idx_ml_model_created ON ml_model_metadata(created_at DESC);
+CREATE INDEX idx_ml_model_deployed ON ml_model_metadata(deployed, created_at DESC);
+CREATE INDEX idx_ml_model_type ON ml_model_metadata(model_type);
+
+-- Comment
+COMMENT ON TABLE ml_model_metadata IS 'Tracks ML model training runs and performance metrics';
+
 -- Indexes for performance
 CREATE INDEX idx_alerts_user_id ON alerts(user_id);
 CREATE INDEX idx_alerts_created_at ON alerts(created_at DESC);

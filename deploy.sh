@@ -1,85 +1,101 @@
 #!/bin/bash
+set -e
 
-# Google Cloud Run Deployment Script
-# Run this from your project root directory
+echo "🚀 Deploying ML Service and Go API to Cloud Run"
 
-set -e  # Exit on any error
-
-echo "🚀 Starting deployment to Google Cloud Run..."
-
-# Load environment variables from .env.neon
+# Load environment variables
 if [ -f .env.neon ]; then
-    echo "📋 Loading environment variables from .env.neon..."
-    source .env.neon
-    echo "✅ Environment variables loaded"
-else
-    echo "❌ .env.neon file not found!"
-    exit 1
+    export $(grep -v '^#' .env.neon | xargs)
 fi
 
-# Configuration
 PROJECT_ID="bidding-analysis"
-SERVICE_NAME="bidding-analysis"
 REGION="us-central1"
-IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
 
-echo "📦 Step 1: Building Docker image..."
-docker build -t ${IMAGE_NAME} .
+# ============================================
+# STAGE 1: Deploy ML Service
+# ============================================
+echo "📦 Stage 1: Deploying ML Service..."
 
-if [ $? -ne 0 ]; then
-    echo "❌ Docker build failed!"
-    exit 1
-fi
+cd ml-service
 
-echo "📤 Step 2: Pushing image to Google Container Registry..."
-docker push ${IMAGE_NAME}
+# Remove symlinks first
+echo "Copying model files..."
+rm -f bid_optimizer_latest.json bid_optimizer_latest_encoders.json
 
-if [ $? -ne 0 ]; then
-    echo "❌ Docker push failed!"
-    exit 1
-fi
+# Now copy the actual files
+cp ../models/bid_optimizer_latest.json bid_optimizer_latest.json
+cp ../models/bid_optimizer_latest_encoders.json bid_optimizer_latest_encoders.json
 
-cat > /tmp/env.yaml << EOF
-DATABASE_URL: "${DATABASE_URL}"
-DB_HOST: "${DB_HOST}"
-DB_USER: "${DB_USER}"
-DB_PASSWORD: "${DB_PASSWORD}"
-DB_NAME: "${DB_NAME}"
-DB_PORT: "${DB_PORT}"
-DB_SSL_MODE: "${DB_SSL_MODE}"
-DB_STATEMENT_CACHE_MODE: "${DB_STATEMENT_CACHE_MODE}"
-OPENAI_API_KEY: "${OPENAI_API_KEY}"
-ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
-EOF
+# Verify they're real files
+ls -lh bid_optimizer_latest*.json
 
-echo "☁️  Step 3: Deploying to Cloud Run..."
-gcloud run deploy ${SERVICE_NAME} \
-  --image ${IMAGE_NAME} \
-  --platform managed \
-  --region ${REGION} \
+# Deploy ML service
+echo "Deploying ml-predictor service..."
+gcloud run deploy ml-predictor \
+  --source . \
+  --project="${PROJECT_ID}" \
+  --region="${REGION}" \
+  --platform=managed \
+  --memory=512Mi \
+  --cpu=1 \
+  --min-instances=0 \
+  --max-instances=10 \
   --allow-unauthenticated \
-  --port 8080 \
-  --timeout 300 \
-  --memory 1Gi \
-  --cpu 1 \
-  --concurrency 80 \
-  --max-instances 10 \
-  --project ${PROJECT_ID} \
- --env-vars-file /tmp/env.yaml
+  --timeout=60
 
-if [ $? -eq 0 ]; then
-    echo "✅ Deployment successful!"
-    echo ""
-    echo "🌐 Your API is live at:"
-    echo "https://${SERVICE_NAME}-539382269313.${REGION}.run.app"
-    echo ""
-    echo "🧪 Test endpoints:"
-    echo "curl https://${SERVICE_NAME}-539382269313.${REGION}.run.app/health"
-    echo "curl https://${SERVICE_NAME}-539382269313.${REGION}.run.app/trpc/debug"
-    echo ""
-    echo "📊 Monitor logs:"
-    echo "gcloud logging read \"resource.type=cloud_run_revision AND resource.labels.service_name=${SERVICE_NAME}\" --project ${PROJECT_ID} --limit 20"
-else
-    echo "❌ Deployment failed!"
-    exit 1
-fi
+# Get ML service URL
+ML_SERVICE_URL=$(gcloud run services describe ml-predictor \
+  --project="${PROJECT_ID}" \
+  --region="${REGION}" \
+  --format='value(status.url)')
+
+echo "✅ ML Service deployed at: ${ML_SERVICE_URL}"
+
+# Clean up - restore symlinks for local dev
+rm bid_optimizer_latest.json bid_optimizer_latest_encoders.json
+ln -sf ../models/bid_optimizer_latest.json bid_optimizer_latest.json
+ln -sf ../models/bid_optimizer_latest_encoders.json bid_optimizer_latest_encoders.json
+
+cd ..
+
+# ============================================
+# STAGE 2: Deploy Go Service
+# ============================================
+echo "📦 Stage 2: Deploying Go Service..."
+
+# Build and push Docker image
+echo "Building Go service Docker image..."
+docker build -t gcr.io/${PROJECT_ID}/bidding-analysis:latest .
+docker push gcr.io/${PROJECT_ID}/bidding-analysis:latest
+
+# Create temporary env file (WITHOUT PORT - Cloud Run sets that automatically)
+cat > /tmp/env.yaml << ENVEOF
+DATABASE_URL: "${DATABASE_URL}"
+ML_SERVICE_URL: "${ML_SERVICE_URL}"
+OPENAI_API_KEY: "${OPENAI_API_KEY}"
+ENVIRONMENT: "production"
+ENVEOF
+
+# Deploy Go service
+echo "Deploying bidding-analysis service..."
+gcloud run deploy bidding-analysis \
+  --image=gcr.io/${PROJECT_ID}/bidding-analysis:latest \
+  --project="${PROJECT_ID}" \
+  --region="${REGION}" \
+  --platform=managed \
+  --env-vars-file=/tmp/env.yaml \
+  --memory=512Mi \
+  --cpu=1 \
+  --min-instances=0 \
+  --max-instances=10 \
+  --allow-unauthenticated \
+  --timeout=60
+
+# Clean up
+rm /tmp/env.yaml
+
+echo "✅ Deployment complete!"
+echo ""
+echo "Services:"
+echo "  ML Service: ${ML_SERVICE_URL}"
+echo "  Go API: $(gcloud run services describe bidding-analysis --project=${PROJECT_ID} --region=${REGION} --format='value(status.url)')"

@@ -1,0 +1,82 @@
+# ML Training Configuration
+
+database:
+  host: localhost
+  port: 5432
+  name: bidding_analysis
+  user: postgres
+  password: postgres
+
+training:
+  # Data parameters
+  days_of_history: 30
+  test_size: 0.2
+  validation_size: 0.1
+
+  # Model hyperparameters
+  xgboost:
+    n_estimators: 300
+    max_depth: 8
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    min_child_weight: 3
+    gamma: 0.1
+    reg_alpha: 0.1
+    reg_lambda: 1.0
+    early_stopping_rounds: 20
+
+  # Feature engineering
+  features:
+    - floor_price
+    - engagement_score
+    - conversion_probability
+    - historical_win_rate
+    - historical_avg_bid
+    - historical_avg_win_price
+    - device_type_encoded
+    - segment_category_encoded
+    - hour_of_day
+    - day_of_week
+    - country_encoded
+    - campaign_spend_last_7d
+    - campaign_conversions_last_7d
+
+# Model export
+export:
+  format: onnx
+  opset_version: 12
+  output_dir: models/
+
+# Monitoring
+monitoring:
+  mlflow:
+    enabled: false
+    tracking_uri: http://localhost:5000
+
+  metrics:
+    - rmse
+    - mae
+    - r2
+    - mape
+
+# Deployment
+deployment:
+  model_registry: filesystem # or 'mlflow', 's3', 'gcs'
+  version_format: "%Y%m%d_%H%M%S"
+  keep_latest_n_models: 5
+
+  # A/B testing
+  rollout_strategy: gradual
+  initial_traffic_percentage: 10
+  increment_percentage: 20
+  increment_interval_hours: 24
+
+# Retraining schedule
+retraining:
+  enabled: true
+  schedule: "0 2 * * *" # Daily at 2 AM (cron format)
+  min_new_samples: 1000
+  performance_threshold:
+    rmse_increase_limit: 0.1 # Retrain if RMSE increases by 10%
+    r2_decrease_limit: 0.05
