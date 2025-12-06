@@ -1,15 +1,18 @@
 {
-	"folders": [
-		{
-			"path": "."
-		}
-	],
-	"settings": {
-		"workbench.preferredDarkColorTheme": "Bearded Theme Milkshake Raspberry",
-		"workbench.colorTheme": "Ayu Dark",
-		"workbench.iconTheme": "material-icon-theme",
-		"makefile.configureOnOpen": true,
-		"editor.fontSize": 16,
-		"editor.tabSize": 2
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "workbench.preferredDarkColorTheme": "Bearded Theme Milkshake Raspberry",
+    "workbench.colorTheme": "Ayu Mirage Bordered",
+    "workbench.iconTheme": "material-icon-theme",
+    "makefile.configureOnOpen": true,
+    "editor.fontSize": 16,
+    "editor.tabSize": 2,
+		"autopep8.args": [
+    "--indent-size=2"
+    ]
 	}
 }

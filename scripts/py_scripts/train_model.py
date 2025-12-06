@@ -506,7 +506,19 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     model_path = args.output.replace(".onnx", f"_{timestamp}.onnx")
 
-    optimizer.export_to_onnx(model_path)
+    # Save model as JSON (ONNX has compatibility issues)
+    os.makedirs(os.path.dirname(model_path) if os.path.dirname(model_path) else "models", exist_ok=True)
+    model_json = model_path.replace(".onnx", ".json")
+    optimizer.model.save_model(model_json)
+    print(f"✅ Model saved: {model_json}")
+
+    # Save encoders
+    encoder_path = model_json.replace(".json", "_encoders.json")
+    with open(encoder_path, 'w') as f:
+        json.dump(optimizer.feature_encoders, f, indent=2)
+    print(f"✅ Encoders saved: {encoder_path}")
+
+    actual_model_path = model_json
 
     # Determine actual saved model path (might be .json if ONNX failed)
     actual_model_path = model_path
