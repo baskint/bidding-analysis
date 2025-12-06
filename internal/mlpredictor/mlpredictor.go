@@ -1,146 +1,136 @@
 package mlpredictor
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"sync"
-
-	"github.com/owulveryck/onnx-go"
-	"github.com/owulveryck/onnx-go/backend/x/gorgonnx"
-	"gorgonia.org/tensor"
+	"time"
 )
 
-// BidPredictorONNXSimple uses pure Go ONNX library (no C dependencies)
-type BidPredictorONNXSimple struct {
-	backend      *gorgonnx.Graph
-	encoders     map[string]map[string]float64
-	mu           sync.RWMutex
-	modelPath    string
-	encodersPath string
+// BidFeatures represents input features for prediction
+type BidFeatures struct {
+	FloorPrice                float64
+	EngagementScore           float64
+	ConversionProbability     float64
+	HistoricalWinRate         float64
+	HistoricalAvgBid          float64
+	HistoricalAvgWinPrice     float64
+	DeviceType                string
+	SegmentCategory           string
+	Country                   string
+	HourOfDay                 int
+	DayOfWeek                 int
+	CampaignSpendLast7d       float64
+	CampaignConversionsLast7d float64
 }
 
-// NewBidPredictorONNXSimple creates predictor using pure Go ONNX
-func NewBidPredictorONNXSimple(modelPath, encodersPath string) (*BidPredictorONNXSimple, error) {
-	p := &BidPredictorONNXSimple{
-		modelPath:    modelPath,
-		encodersPath: encodersPath,
+// Predictor interface
+type Predictor interface {
+	Predict(features BidFeatures) (float64, error)
+	PredictBatch(batch []BidFeatures) ([]float64, error)
+	GetModelInfo() map[string]interface{}
+	ReloadModel() error
+	Close() error
+}
+
+// BidPredictorHTTP calls Python ML service via HTTP
+type BidPredictorHTTP struct {
+	serviceURL string
+	client     *http.Client
+	mu         sync.RWMutex
+}
+
+// NewBidPredictorHTTP creates a predictor that calls Python service
+func NewBidPredictorHTTP(serviceURL string) (Predictor, error) {
+	if serviceURL == "" {
+		serviceURL = os.Getenv("ML_SERVICE_URL")
+		if serviceURL == "" {
+			serviceURL = "http://localhost:5000"
+		}
 	}
 
-	if err := p.LoadModel(); err != nil {
-		return nil, fmt.Errorf("failed to load model: %w", err)
+	p := &BidPredictorHTTP{
+		serviceURL: serviceURL,
+		client: &http.Client{
+			Timeout: 2 * time.Second,
+		},
+	}
+
+	// Check if service is available
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	if err := p.healthCheck(ctx); err != nil {
+		return nil, fmt.Errorf("ML service not available at %s: %w", serviceURL, err)
 	}
 
 	return p, nil
 }
 
-// LoadModel loads the ONNX model and feature encoders
-func (p *BidPredictorONNXSimple) LoadModel() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	// Load ONNX model
-	backend := gorgonnx.NewGraph()
-	model := onnx.NewModel(backend)
-
-	modelFile, err := os.Open(p.modelPath)
-	if err != nil {
-		return fmt.Errorf("failed to open model file: %w", err)
-	}
-	defer modelFile.Close()
-
-	err = model.UnmarshalBinary(modelFile)
-	if err != nil {
-		return fmt.Errorf("failed to load ONNX model: %w", err)
-	}
-
-	p.backend = backend
-
-	// Load feature encoders
-	encodersData, err := os.ReadFile(p.encodersPath)
-	if err != nil {
-		return fmt.Errorf("failed to read encoders: %w", err)
-	}
-
-	if err := json.Unmarshal(encodersData, &p.encoders); err != nil {
-		return fmt.Errorf("failed to parse encoders: %w", err)
-	}
-
-	return nil
-}
-
-// Predict returns the optimal bid for given features
-func (p *BidPredictorONNXSimple) Predict(features BidFeatures) (float64, error) {
+// Predict returns the optimal bid
+func (p *BidPredictorHTTP) Predict(features BidFeatures) (float64, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	if p.backend == nil {
-		return 0, fmt.Errorf("model not loaded")
+	reqData := map[string]interface{}{
+		"floor_price":                  features.FloorPrice,
+		"engagement_score":             features.EngagementScore,
+		"conversion_probability":       features.ConversionProbability,
+		"historical_win_rate":          features.HistoricalWinRate,
+		"historical_avg_bid":           features.HistoricalAvgBid,
+		"historical_avg_win_price":     features.HistoricalAvgWinPrice,
+		"device_type":                  features.DeviceType,
+		"segment_category":             features.SegmentCategory,
+		"hour_of_day":                  features.HourOfDay,
+		"day_of_week":                  features.DayOfWeek,
+		"country":                      features.Country,
+		"campaign_spend_last_7d":       features.CampaignSpendLast7d,
+		"campaign_conversions_last_7d": features.CampaignConversionsLast7d,
 	}
 
-	// Convert features to float32 array
-	inputData := []float32{
-		float32(features.FloorPrice),
-		float32(features.EngagementScore),
-		float32(features.ConversionProbability),
-		float32(features.HistoricalWinRate),
-		float32(features.HistoricalAvgBid),
-		float32(features.HistoricalAvgWinPrice),
-		float32(p.encodeFeature("device_type", features.DeviceType)),
-		float32(p.encodeFeature("segment_category", features.SegmentCategory)),
-		float32(features.HourOfDay),
-		float32(features.DayOfWeek),
-		float32(p.encodeFeature("country", features.Country)),
-		float32(features.CampaignSpendLast7d),
-		float32(features.CampaignConversionsLast7d),
-	}
-
-	// Create input tensor
-	inputTensor := tensor.New(
-		tensor.WithShape(1, 13),
-		tensor.WithBacking(inputData),
-	)
-
-	// Set input
-	err := p.backend.SetInput(0, inputTensor)
+	jsonData, err := json.Marshal(reqData)
 	if err != nil {
-		return 0, fmt.Errorf("failed to set input: %w", err)
+		return 0, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// Run inference
-	err = p.backend.Run()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", p.serviceURL+"/predict", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return 0, fmt.Errorf("inference failed: %w", err)
+		return 0, fmt.Errorf("failed to create request: %w", err)
 	}
+	req.Header.Set("Content-Type", "application/json")
 
-	// Get output
-	output, err := p.backend.GetOutputTensors()
+	resp, err := p.client.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get output: %w", err)
+		return 0, fmt.Errorf("failed to call ML service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("ML service returned status %d", resp.StatusCode)
 	}
 
-	if len(output) == 0 {
-		return 0, fmt.Errorf("no output from model")
+	var result struct {
+		BidPrice   float64 `json:"bid_price"`
+		Confidence float64 `json:"confidence"`
+		Strategy   string  `json:"strategy"`
 	}
 
-	// Extract prediction
-	outputData := output[0].Data().([]float32)
-	if len(outputData) == 0 {
-		return 0, fmt.Errorf("empty output")
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	prediction := float64(outputData[0])
-
-	// Ensure above floor price
-	if prediction < features.FloorPrice {
-		prediction = features.FloorPrice * 1.01
-	}
-
-	return prediction, nil
+	return result.BidPrice, nil
 }
 
-// PredictBatch makes predictions for multiple bid requests
-func (p *BidPredictorONNXSimple) PredictBatch(batch []BidFeatures) ([]float64, error) {
+// PredictBatch makes predictions for multiple requests
+func (p *BidPredictorHTTP) PredictBatch(batch []BidFeatures) ([]float64, error) {
 	predictions := make([]float64, len(batch))
 	for i, features := range batch {
 		pred, err := p.Predict(features)
@@ -152,35 +142,42 @@ func (p *BidPredictorONNXSimple) PredictBatch(batch []BidFeatures) ([]float64, e
 	return predictions, nil
 }
 
-// encodeFeature encodes a categorical feature
-func (p *BidPredictorONNXSimple) encodeFeature(featureName, value string) float64 {
-	if encoder, ok := p.encoders[featureName]; ok {
-		if encoded, ok := encoder[value]; ok {
-			return encoded
-		}
+// healthCheck verifies the ML service is running
+func (p *BidPredictorHTTP) healthCheck(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", p.serviceURL+"/health", nil)
+	if err != nil {
+		return err
 	}
-	return 0.0
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("health check failed with status %d", resp.StatusCode)
+	}
+
+	return nil
 }
 
-// GetModelInfo returns model information
-func (p *BidPredictorONNXSimple) GetModelInfo() map[string]interface{} {
+// GetModelInfo returns information about the ML service
+func (p *BidPredictorHTTP) GetModelInfo() map[string]interface{} {
 	return map[string]interface{}{
-		"model_path":    p.modelPath,
-		"encoders_path": p.encodersPath,
-		"model_loaded":  p.backend != nil,
-		"model_type":    "onnx_pure_go",
+		"service_url":  p.serviceURL,
+		"model_type":   "http_python_service",
+		"model_loaded": true,
 	}
 }
 
-// ReloadModel reloads the model
-func (p *BidPredictorONNXSimple) ReloadModel() error {
-	return p.LoadModel()
+// ReloadModel is a no-op for HTTP predictor
+func (p *BidPredictorHTTP) ReloadModel() error {
+	return nil
 }
 
 // Close cleans up resources
-func (p *BidPredictorONNXSimple) Close() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.backend = nil
+func (p *BidPredictorHTTP) Close() error {
+	p.client.CloseIdleConnections()
 	return nil
 }
