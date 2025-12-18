@@ -53,10 +53,11 @@ func NewBidPredictorHTTP(serviceURL string) (Predictor, error) {
 		}
 	}
 
+	// increase timeout to 30s to allow for complex model loading
 	p := &BidPredictorHTTP{
 		serviceURL: serviceURL,
 		client: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 30 * time.Second,
 		},
 	}
 
@@ -100,7 +101,8 @@ func (p *BidPredictorHTTP) Predict(features BidFeatures) (float64, error) {
 		return 0, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// increase this to 30s to allow for complex model inference
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "POST", p.serviceURL+"/predict", bytes.NewBuffer(jsonData))
