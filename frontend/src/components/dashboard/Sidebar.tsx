@@ -12,10 +12,12 @@ import {
   Brain,
   AlertTriangle,
   Activity,
+  Sparkles,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Overview', href: '/dashboard', icon: BarChart3 },
+  { name: 'ML Predictor', href: '/dashboard/predict', icon: Sparkles, highlight: true },
   { name: 'Live Bidding', href: '/dashboard/bidding', icon: Zap },
   { name: 'Campaigns', href: '/dashboard/campaigns', icon: TrendingUp },
   { name: 'Analytics', href: '/dashboard/analytics', icon: Activity },
@@ -45,20 +47,31 @@ export function Sidebar() {
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
+            const isHighlight = item.highlight;
+            
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 className={`
-                  flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200
+                  flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 relative
                   ${isActive
                     ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-l-4 border-blue-600'
+                    : isHighlight
+                    ? 'text-slate-900 bg-gradient-to-r from-blue-50/50 to-purple-50/50 hover:from-blue-50 hover:to-purple-50 border-l-4 border-transparent'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }
                 `}
               >
-                <item.icon className={`w-5 h-5 mr-3 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                <item.icon className={`w-5 h-5 mr-3 ${
+                  isActive ? 'text-blue-600' : isHighlight ? 'text-purple-600' : 'text-slate-400'
+                }`} />
                 {item.name}
+                {isHighlight && !isActive && (
+                  <span className="ml-auto px-2 py-0.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs font-semibold rounded-full">
+                    New
+                  </span>
+                )}
               </Link>
             );
           })}
