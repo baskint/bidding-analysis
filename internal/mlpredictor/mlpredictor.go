@@ -76,20 +76,23 @@ func (p *BidPredictorHTTP) Predict(features BidFeatures) (float64, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
+	// Wrap features in "features" key as expected by Python service
 	reqData := map[string]interface{}{
-		"floor_price":                  features.FloorPrice,
-		"engagement_score":             features.EngagementScore,
-		"conversion_probability":       features.ConversionProbability,
-		"historical_win_rate":          features.HistoricalWinRate,
-		"historical_avg_bid":           features.HistoricalAvgBid,
-		"historical_avg_win_price":     features.HistoricalAvgWinPrice,
-		"device_type":                  features.DeviceType,
-		"segment_category":             features.SegmentCategory,
-		"hour_of_day":                  features.HourOfDay,
-		"day_of_week":                  features.DayOfWeek,
-		"country":                      features.Country,
-		"campaign_spend_last_7d":       features.CampaignSpendLast7d,
-		"campaign_conversions_last_7d": features.CampaignConversionsLast7d,
+		"features": map[string]interface{}{
+			"floor_price":                  features.FloorPrice,
+			"engagement_score":             features.EngagementScore,
+			"conversion_probability":       features.ConversionProbability,
+			"historical_win_rate":          features.HistoricalWinRate,
+			"historical_avg_bid":           features.HistoricalAvgBid,
+			"historical_avg_win_price":     features.HistoricalAvgWinPrice,
+			"device_type":                  features.DeviceType,
+			"segment_category":             features.SegmentCategory,
+			"hour_of_day":                  features.HourOfDay,
+			"day_of_week":                  features.DayOfWeek,
+			"country":                      features.Country,
+			"campaign_spend_last_7d":       features.CampaignSpendLast7d,
+			"campaign_conversions_last_7d": features.CampaignConversionsLast7d,
+		},
 	}
 
 	jsonData, err := json.Marshal(reqData)
@@ -116,17 +119,17 @@ func (p *BidPredictorHTTP) Predict(features BidFeatures) (float64, error) {
 		return 0, fmt.Errorf("ML service returned status %d", resp.StatusCode)
 	}
 
+	// Python service returns {"predicted_bid": X, "model_version": Y}
 	var result struct {
-		BidPrice   float64 `json:"bid_price"`
-		Confidence float64 `json:"confidence"`
-		Strategy   string  `json:"strategy"`
+		PredictedBid float64 `json:"predicted_bid"`
+		ModelVersion string  `json:"model_version"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return 0, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return result.BidPrice, nil
+	return result.PredictedBid, nil
 }
 
 // PredictBatch makes predictions for multiple requests
