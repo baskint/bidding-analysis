@@ -1,7 +1,7 @@
 // frontend/src/app/dashboard/compare/page.tsx
 'use client';
 import { useState } from 'react';
-import { Brain, TrendingUp, AlertCircle, Zap, Lock, Unlock, Trophy } from 'lucide-react';
+import { Brain, Zap, Lock, Unlock, Trophy } from 'lucide-react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -72,7 +72,11 @@ export default function ComparePage() {
     userSegment: false,
   });
 
-  const updateScenario = (index: number, field: keyof ScenarioParams, value: any) => {
+  const updateScenario = (
+    index: number,
+    field: keyof ScenarioParams,
+    value: string | number
+  ) => {
     const newScenarios = [...scenarios];
     newScenarios[index] = { ...newScenarios[index], [field]: value };
 
