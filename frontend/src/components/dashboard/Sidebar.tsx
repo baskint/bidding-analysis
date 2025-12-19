@@ -18,6 +18,7 @@ import {
 const navigation = [
   { name: 'Overview', href: '/dashboard', icon: BarChart3 },
   { name: 'ML Predictor', href: '/dashboard/predict', icon: Sparkles, highlight: true },
+  { name: 'Bid Comparison', href: '/dashboard/compare', icon: TrendingUp, highlight: true },
   { name: 'Live Bidding', href: '/dashboard/bidding', icon: Zap },
   { name: 'Campaigns', href: '/dashboard/campaigns', icon: TrendingUp },
   { name: 'Analytics', href: '/dashboard/analytics', icon: Activity },
