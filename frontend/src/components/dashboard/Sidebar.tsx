@@ -20,6 +20,7 @@ const navigation = [
   { name: 'ML Predictor', href: '/dashboard/predict', icon: Sparkles, highlight: true },
   { name: 'Bid Comparison', href: '/dashboard/compare', icon: TrendingUp, highlight: true },
   { name: 'Live Bidding', href: '/dashboard/bidding', icon: Zap },
+  { name: 'Live Activity', href: '/dashboard/activity', icon: Activity, highlight: true },
   { name: 'Campaigns', href: '/dashboard/campaigns', icon: TrendingUp },
   { name: 'Analytics', href: '/dashboard/analytics', icon: Activity },
   { name: 'ML Models', href: '/dashboard/models', icon: Brain },

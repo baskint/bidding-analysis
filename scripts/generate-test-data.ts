@@ -6,8 +6,8 @@
 // const API_BASE_URL = process.env.API_URL || 'http://localhost:8080';
 // const AUTH_TOKEN = process.env.AUTH_TOKEN || '';
 
-const AUTH_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmM2OWZkYjctZWM1ZS00NjVjLWE0YzItNDU0ODA4ZDlmMjdmIiwidXNlcm5hbWUiOiJiYXNraW5AdGFwa2FuLmNvbSIsImV4cCI6MTc2NjYzMTM3OCwiaWF0IjoxNzY2MDI2NTc4fQ.ZLoKUcN1XvsBx1JCBba-tF5XydBtlbDsD8DniATjIAo"
-const API_BASE_URL="https://bidding-analysis-539382269313.us-central1.run.app"
+const API_BASE_URL = process.env.API_URL || 'http://localhost:8080';
+const AUTH_TOKEN = process.env.AUTH_TOKEN || '';
 
 console.log('Configuration:');
 console.log('   API_URL: ' + API_BASE_URL);
@@ -25,6 +25,14 @@ const NUM_EVENTS = 1000; // parseInt(process.argv[2] || '500', 10);
 const BATCH_SIZE = 50;
 
 // Data pools
+// const CAMPAIGNS = [
+//   { id: '1e6aad91-9499-434d-ab37-a61627b00c5b', name: 'Tech Products Q4' },
+//   { id: '65fc5974-10c1-4957-8a1b-7614a311292b', name: 'Holiday Shopping' },
+//   { id: 'a17e4042-45cb-4e12-b318-75376b74a1bb', name: 'Gaming Hardware' },
+//   { id: 'a1bb71c9-6daf-4300-8b59-6895986d2dc1', name: 'Mobile Apps' },
+//   { id: '7d001b14-0ddd-4de0-8b7d-5d0457ffd08e', name: 'E-commerce Summer' },
+// ];
+
 const CAMPAIGNS = [
   { id: '1e6aad91-9499-434d-ab37-a61627b00c5b', name: 'Tech Products Q4' },
   { id: '65fc5974-10c1-4957-8a1b-7614a311292b', name: 'Holiday Shopping' },
