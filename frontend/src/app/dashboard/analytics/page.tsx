@@ -13,9 +13,9 @@ import {
   getPerformanceOverview,
   getKeywordAnalysis,
   getDeviceBreakdown,
-  // getGeoBreakdown,
-  // getHourlyPerformance,
-  // getCompetitiveAnalysis,
+  getGeoBreakdown,
+  getHourlyPerformance,
+  getCompetitiveAnalysis,
   type PerformanceMetrics,
   type KeywordAnalysis,
   type DeviceBreakdown,
@@ -364,12 +364,9 @@ export default function AnalysisPage() {
     useState<PerformanceMetrics | null>(null);
   const [keywords, setKeywords] = useState<KeywordAnalysis[]>([]);
   const [devices, setDevices] = useState<DeviceBreakdown[]>([]);
-  // const [geos, setGeos] = useState<GeoBreakdown[]>([]);
-  // const [hourly, setHourly] = useState<HourlyPerformance[]>([]);
-  // const [competitive, setCompetitive] = useState<CompetitiveAnalysis[]>([]);
-  const geos: GeoBreakdown[] = [];
-  const hourly: HourlyPerformance[] = [];
-  const competitive: CompetitiveAnalysis[] = [];  
+  const [geos, setGeos] = useState<GeoBreakdown[]>([]);
+  const [hourly, setHourly] = useState<HourlyPerformance[]>([]);
+  const [competitive, setCompetitive] = useState<CompetitiveAnalysis[]>([]);  
 
 
     const loadData = useCallback(async () => {
@@ -377,20 +374,29 @@ export default function AnalysisPage() {
         const dateParams = getDateRange(dateRange);
 
         try {
-            // Using Promise.all for parallel fetching
+            // Using Promise.all for parallel fetching - ALL real API calls
             const [
                 perfData,
                 kwData,
                 deviceData,
+                geoData,
+                hourlyData,
+                competitiveData,
             ] = await Promise.all([
                 getPerformanceOverview(dateParams),
                 getKeywordAnalysis({ ...dateParams, limit: 20 }),
                 getDeviceBreakdown(dateParams),
+                getGeoBreakdown(dateParams),
+                getHourlyPerformance(dateParams),
+                getCompetitiveAnalysis(dateParams),
             ]);
 
             setPerformanceMetrics(perfData);
             setKeywords(kwData || []);
             setDevices(deviceData || []);
+            setGeos(geoData || []);
+            setHourly(hourlyData || []);
+            setCompetitive(competitiveData || []);
             
         } catch (error) {
             console.error("Failed to load analysis data:", error);

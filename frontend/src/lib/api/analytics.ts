@@ -1,4 +1,4 @@
-// frontend/src/lib/api/analysis.ts
+// frontend/src/lib/api/analytics.ts
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 // Helper function to get auth headers

@@ -41,7 +41,7 @@ export default function AlertsPage() {
         } = {
           limit: 100,
         };
-        
+
         if (selectedType !== "all") params.type = selectedType;
         if (selectedSeverity !== "all") params.severity = selectedSeverity;
         if (selectedStatus !== "all") params.status = selectedStatus;

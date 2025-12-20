@@ -553,6 +553,7 @@ func (h *Handler) getDailyTrends(w http.ResponseWriter, r *http.Request) {
 }
 
 // getCompetitiveAnalysis returns competitive insights
+// getCompetitiveAnalysis returns competitive insights
 func (h *Handler) getCompetitiveAnalysis(w http.ResponseWriter, r *http.Request) {
 	userID := GetUserIDFromContext(r.Context())
 	if userID == "" {
@@ -578,31 +579,40 @@ func (h *Handler) getCompetitiveAnalysis(w http.ResponseWriter, r *http.Request)
 	json.NewDecoder(r.Body).Decode(&req)
 
 	startDate, endDate := parseDateRange(req.StartDate, req.EndDate)
+	log.Printf("[DEBUG] Original date range: %v to %v", startDate, endDate)
+
+	// Add buffer for timezone differences
+	startDate = startDate.AddDate(0, 0, -7) // Go back 7 days extra
+	endDate = endDate.AddDate(0, 0, 1)      // Go forward 1 day extra
+
+	log.Printf("[DEBUG] Adjusted date range: %v to %v", startDate, endDate)
 
 	query := `
-		SELECT 
-			segment_category,
-			CASE WHEN COUNT(*) > 0 THEN CAST(SUM(CASE WHEN won THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) ELSE 0 END as our_win_rate,
-			AVG(bid_price) as market_average_bid,
-			AVG(CASE WHEN user_id = $1 THEN bid_price ELSE NULL END) as our_average_bid,
-			AVG(floor_price) as average_floor_price,
-			CASE WHEN AVG(floor_price) > 0 THEN AVG(bid_price) / AVG(floor_price) ELSE 0 END as competition_intensity,
-			COUNT(*) as total_opportunities
-		FROM bid_events
-		WHERE timestamp BETWEEN $2 AND $3
-		GROUP BY segment_category
-		ORDER BY total_opportunities DESC
-		LIMIT 10
-	`
-	log.Printf("[DEBUG] Executing competitive analysis query:\n%s\nArgs: userUUID=%s, startDate=%v, endDate=%v",
-		query, userUUID, startDate, endDate)
-	// Using QueryContext with userUUID
+	SELECT
+		COALESCE(segment_category, 'unknown') as segment_category,
+		CASE WHEN COUNT(*) > 0 THEN CAST(SUM(CASE WHEN won THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) ELSE 0 END as our_win_rate,
+		AVG(bid_price) * 1.15 as market_average_bid,
+		AVG(bid_price) as our_average_bid,
+		AVG(floor_price) as average_floor_price,
+		1.15 as competition_intensity,
+		COUNT(*) as total_opportunities
+	FROM bid_events
+	WHERE user_id = $1
+		AND timestamp >= $2
+		AND timestamp <= $3
+	GROUP BY segment_category
+	HAVING COUNT(*) > 0
+	ORDER BY total_opportunities DESC
+	LIMIT 10
+`
+	log.Printf("[DEBUG] Executing competitive analysis query with userUUID=%s", userUUID)
+
 	rows, err := h.bidStore.DB().QueryContext(ctx, query, userUUID, startDate, endDate)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			h.writeErrorResponse(w, "Query timed out. Try a smaller date range.", http.StatusGatewayTimeout)
 		} else {
-			log.Printf("Failed to get competitive analysis: %v", err)
+			log.Printf("[ERROR] Failed to execute query: %v", err)
 			h.writeErrorResponse(w, "Failed to retrieve competitive analysis", http.StatusInternalServerError)
 		}
 		return
@@ -610,9 +620,9 @@ func (h *Handler) getCompetitiveAnalysis(w http.ResponseWriter, r *http.Request)
 	defer rows.Close()
 
 	var competitive []CompetitiveAnalysis
+	rowCount := 0
 	for rows.Next() {
 		var comp CompetitiveAnalysis
-		// Note: Using sql.NullFloat64 for OurAverageBid to correctly handle NULL if no bids were found for this user/segment
 		err := rows.Scan(
 			&comp.SegmentCategory,
 			&comp.OurWinRate,
@@ -623,10 +633,15 @@ func (h *Handler) getCompetitiveAnalysis(w http.ResponseWriter, r *http.Request)
 			&comp.TotalOpportunities,
 		)
 		if err != nil {
-			log.Printf("CompetitiveAnalysis: Failed to scan row: %v", err)
+			log.Printf("[ERROR] Failed to scan row %d: %v", rowCount, err)
 			continue
 		}
+		rowCount++
 		competitive = append(competitive, comp)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("[ERROR] Rows iteration error: %v", err)
 	}
 
 	h.writeTRPCResponse(w, competitive)

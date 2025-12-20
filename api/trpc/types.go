@@ -260,18 +260,13 @@ type DeviceBreakdown struct {
 
 // CompetitiveAnalysis represents competitive metrics by segment.
 type CompetitiveAnalysis struct {
-	SegmentCategory sql.NullString `db:"segment_category" json:"segmentCategory"`
-
-	// FIX: Match the SQL aliases exactly
-	OurWinRate       float64         `db:"our_win_rate" json:"ourWinRate"`             // FIX: Added
-	MarketAverageBid sql.NullFloat64 `db:"market_average_bid" json:"marketAverageBid"` // FIX: Added (using sql.NullFloat64 for potential NULL AVG())
-
-	OurAverageBid     sql.NullFloat64 `db:"our_average_bid" json:"ourAverageBid"`
-	AverageFloorPrice sql.NullFloat64 `db:"average_floor_price" json:"averageFloorPrice"`
-
-	// FIX: Match the SQL alias exactly
-	CompetitionIntensity float64 `db:"competition_intensity" json:"competitionIntensity"` // FIX: Added
-	TotalOpportunities   int64   `db:"total_opportunities" json:"totalOpportunities"`     // FIX: This is 'COUNT(*)' from SQL
+	SegmentCategory      string  `db:"segment_category" json:"segment_category"`
+	OurWinRate           float64 `db:"our_win_rate" json:"our_win_rate"`
+	MarketAverageBid     float64 `db:"market_average_bid" json:"market_average_bid"`
+	OurAverageBid        float64 `db:"our_average_bid" json:"our_average_bid"`
+	AverageFloorPrice    float64 `db:"average_floor_price" json:"average_floor_price"`
+	CompetitionIntensity float64 `db:"competition_intensity" json:"competition_intensity"`
+	TotalOpportunities   int     `db:"total_opportunities" json:"total_opportunities"`
 }
 
 // KeywordAnalysis represents performance metrics for a specific keyword.
