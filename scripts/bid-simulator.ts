@@ -17,13 +17,22 @@ if (!AUTH_TOKEN) {
   process.exit(1);
 }
 
+// const CAMPAIGNS = [
+//   '69486fba-6b27-450e-bb05-8a1160ba1e10',
+//   '0e300360-d4e9-4492-82f9-e2118b819042',
+//   '687e0338-7d72-4df2-880a-f151048eabc2',
+//   '868f4419-9612-4c07-a897-457860c07fb5',
+//   'ba3f8fdc-4f76-4bfc-99fa-508bd454c7ba',
+// ];
+
 const CAMPAIGNS = [
-  '69486fba-6b27-450e-bb05-8a1160ba1e10',
-  '0e300360-d4e9-4492-82f9-e2118b819042',
-  '687e0338-7d72-4df2-880a-f151048eabc2',
-  '868f4419-9612-4c07-a897-457860c07fb5',
-  'ba3f8fdc-4f76-4bfc-99fa-508bd454c7ba',
+  '7d001b14-0ddd-4de0-8b7d-5d0457ffd08e',
+  'a1bb71c9-6daf-4300-8b59-6895986d2dc1',
+  'a17e4042-45cb-4e12-b318-75376b74a1bb',
+  '65fc5974-10c1-4957-8a1b-7614a311292b',
+  '1e6aad91-9499-434d-ab37-a61627b00c5b'
 ];
+
 
 const DEVICE_TYPES = ['mobile', 'desktop', 'tablet'];
 const COUNTRIES = ['US', 'UK', 'CA', 'AU', 'DE', 'FR', 'JP'];

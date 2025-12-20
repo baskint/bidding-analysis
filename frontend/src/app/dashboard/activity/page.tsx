@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Activity,
-  TrendingUp,
   TrendingDown,
   CheckCircle,
   XCircle,
@@ -11,7 +10,6 @@ import {
   Monitor,
   Tablet,
   Globe,
-  DollarSign,
   RefreshCw,
   Filter,
 } from 'lucide-react';
@@ -206,7 +204,7 @@ export default function ActivityPage() {
           {/* Status Filter */}
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'won' | 'lost' | 'converted')}
             className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-medium"
           >
             <option value="all">All Status</option>
