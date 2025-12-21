@@ -13,29 +13,8 @@ import {
   RefreshCw,
   Filter,
 } from 'lucide-react';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-
-const getAuthHeaders = () => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': 'Bearer ' + token }),
-  };
-};
-
-interface BidEvent {
-  bid_event_id: string;
-  campaign_id: string;
-  bid_price: number;
-  win_price?: number;
-  won: boolean;
-  converted: boolean;
-  timestamp: string;
-  segment_category: string;
-  device_type: string;
-  country: string;
-}
+import { apiGet, formatCurrency, formatTime, formatDate, unique } from '@/lib/utils';
+import type { BidEvent } from '@/lib/types';
 
 export default function ActivityPage() {
   const [events, setEvents] = useState<BidEvent[]>([]);
@@ -51,17 +30,7 @@ export default function ActivityPage() {
 
   const fetchEvents = useCallback(async () => {
     try {
-      const response = await fetch(API_BASE_URL + '/trpc/bidding.stream', {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch bid stream');
-      }
-
-      const data = await response.json();
-      const bidEvents = data.result?.data || [];
+      const bidEvents = await apiGet<BidEvent[]>('/trpc/bidding.stream');
       setEvents(bidEvents);
       setLastRefresh(new Date());
     } catch (err) {
@@ -131,8 +100,8 @@ export default function ActivityPage() {
     return { Icon: XCircle, color: 'text-slate-500' };
   };
 
-  const uniqueDevices = Array.from(new Set(events.map(e => e.device_type)));
-  const uniqueCountries = Array.from(new Set(events.map(e => e.country)));
+  const uniqueDevices = unique(events.map(e => e.device_type));
+  const uniqueCountries = unique(events.map(e => e.country));
 
   const stats = {
     total: filteredEvents.length,
@@ -189,7 +158,7 @@ export default function ActivityPage() {
         </div>
         <div className="bg-white rounded-lg shadow-sm border border-blue-200 p-4">
           <div className="text-sm text-blue-600">Total Spent</div>
-          <div className="text-2xl font-bold text-blue-600">${stats.totalSpent.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-blue-600">{formatCurrency(stats.totalSpent)}</div>
         </div>
       </div>
 
@@ -281,13 +250,13 @@ export default function ActivityPage() {
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-1">
                         <span className="font-semibold text-slate-900">
-                          ${event.bid_price.toFixed(4)}
+                          {formatCurrency(event.bid_price)}
                         </span>
                         {event.won && event.win_price && (
                           <>
                             <TrendingDown className="w-4 h-4 text-green-600" />
                             <span className="text-sm font-medium text-green-600">
-                              Won at ${event.win_price.toFixed(4)}
+                              Won at {formatCurrency(event.win_price)}
                             </span>
                           </>
                         )}
@@ -315,10 +284,10 @@ export default function ActivityPage() {
                     {/* Timestamp */}
                     <div className="text-right">
                       <div className="text-xs text-slate-500">
-                        {new Date(event.timestamp).toLocaleTimeString()}
+                        {formatTime(event.timestamp)}
                       </div>
                       <div className="text-xs text-slate-400">
-                        {new Date(event.timestamp).toLocaleDateString()}
+                        {formatDate(event.timestamp)}
                       </div>
                     </div>
                   </div>

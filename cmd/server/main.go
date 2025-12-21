@@ -57,12 +57,12 @@ func main() {
 
 	// Step 4: Initialize ML predictor
 	log.Printf("🤖 Initializing ML predictor...")
-	
+
 	var predictor *ml.Predictor
-	
+
 	// Get ML service URL from environment (set by Cloud Run)
 	mlServiceURL := os.Getenv("ML_SERVICE_URL")
-	
+
 	if mlServiceURL != "" {
 		// Use ML service
 		log.Printf("Using ML service at: %s", mlServiceURL)
@@ -71,7 +71,7 @@ func main() {
 			"", // encoders not needed for HTTP
 			bidStore,
 		)
-		
+
 		if err != nil {
 			log.Printf("⚠️  ML service connection failed: %v", err)
 			log.Printf("🔄 Falling back to OpenAI predictor...")
