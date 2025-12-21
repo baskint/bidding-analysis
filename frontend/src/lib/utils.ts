@@ -4,7 +4,7 @@
  * Common helpers used across the application
  */
 
-import type { ApiResponse, ApiError } from './types';
+import type { ApiResponse } from './types';
 
 // ============================================================================
 // API Configuration
@@ -37,7 +37,7 @@ export async function handleApiResponse<T>(response: Response): Promise<T> {
   }
 
   const data: ApiResponse<T> = await response.json();
-  return data.result?.data || (data as any);
+  return data.result?.data || (data as unknown as T);
 }
 
 /**
@@ -54,7 +54,7 @@ export async function apiGet<T>(endpoint: string): Promise<T> {
 /**
  * Make a POST request to the API
  */
-export async function apiPost<T>(endpoint: string, body?: any): Promise<T> {
+export async function apiPost<T>(endpoint: string, body?: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -66,7 +66,7 @@ export async function apiPost<T>(endpoint: string, body?: any): Promise<T> {
 /**
  * Make a PUT request to the API
  */
-export async function apiPut<T>(endpoint: string, body?: any): Promise<T> {
+export async function apiPut<T>(endpoint: string, body?: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
@@ -323,7 +323,7 @@ export function removeFromStorage(key: string): void {
 /**
  * Debounce function calls
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -338,7 +338,7 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Throttle function calls
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {

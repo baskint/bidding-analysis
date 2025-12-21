@@ -26,7 +26,7 @@ import {
 import { PerformanceOverviewCard } from "./components/PerformanceOverviewCard";
 import { KeywordAnalysisTable } from "./components/KeywordAnalysisTable";
 import { DeviceBreakdownChart } from "./components/DeviceBreakdownChart";
-import { getDateRange } from "./helpers/getDateRange";
+import { getDateRange, formatPercent, formatCurrency } from "@/lib/utils";
 
 // Date range selector component
 function DateRangeSelector({
@@ -52,6 +52,7 @@ function DateRangeSelector({
     </div>
   );
 }
+
 // Geographic Breakdown Component
 function GeoBreakdownTable({
   geos,
@@ -83,14 +84,6 @@ function GeoBreakdownTable({
     );
   }
 
-  const formatPercent = (value: number) =>
-    `${(value * 100).toFixed(1)}%`;
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(value);
-
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
       <div className="flex items-center mb-6">
@@ -117,28 +110,22 @@ function GeoBreakdownTable({
               <tr key={idx} className="hover:bg-slate-50">
                 <td className="py-3">
                   <div>
-                    {/* FIX 1: Safely access the string value of the 'country' object */}
                     <div className="font-medium text-slate-900">
                       {geo.country}
                     </div>
-
-                    {/* FIX 2: Check if the 'region' string value exists before rendering */}
                     {geo.region && (
                       <div className="text-sm text-slate-500">
                         {geo.region}
-                      </div>  
+                      </div>
                     )}
                   </div>
                 </td>
-
-                {/* Corrected metric property names (camelCase as per your data sample) */}
                 <td className="py-3 text-right text-slate-600">
                   {(geo?.totalBids || 0).toLocaleString()}
                 </td>
                 <td className="py-3 text-right text-slate-600">
                   {(geo?.wonBids || 0).toLocaleString()}
                 </td>
-
                 <td className="py-3 text-right">
                   <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
                     {formatPercent(geo.winRate)}
@@ -227,23 +214,21 @@ function HourlyPerformanceChart({
         <div>
           <p className="text-slate-600">Peak Win Rate</p>
           <p className="text-lg font-bold text-blue-600">
-            {(
+            {formatPercent(
               hourly.reduce((max, h) =>
                 h.win_rate > max.win_rate ? h : max,
-              ).win_rate * 100
-            ).toFixed(1)}
-            %
+              ).win_rate
+            )}
           </p>
         </div>
         <div>
           <p className="text-slate-600">Peak Conv. Rate</p>
           <p className="text-lg font-bold text-green-600">
-            {(
+            {formatPercent(
               hourly.reduce((max, h) =>
                 h.conversion_rate > max.conversion_rate ? h : max,
-              ).conversion_rate * 100
-            ).toFixed(1)}
-            %
+              ).conversion_rate
+            )}
           </p>
         </div>
       </div>
@@ -281,14 +266,6 @@ function CompetitiveAnalysisCard({
       </div>
     );
   }
-
-  const formatPercent = (value: number) =>
-    `${(value * 100).toFixed(1)}%`;
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(value);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -366,53 +343,48 @@ export default function AnalysisPage() {
   const [devices, setDevices] = useState<DeviceBreakdown[]>([]);
   const [geos, setGeos] = useState<GeoBreakdown[]>([]);
   const [hourly, setHourly] = useState<HourlyPerformance[]>([]);
-  const [competitive, setCompetitive] = useState<CompetitiveAnalysis[]>([]);  
+  const [competitive, setCompetitive] = useState<CompetitiveAnalysis[]>([]);
 
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const dateParams = getDateRange(parseInt(dateRange));
 
-    const loadData = useCallback(async () => {
-        setLoading(true);
-        const dateParams = getDateRange(dateRange);
+    try {
+      // Using Promise.all for parallel fetching - ALL real API calls
+      const [
+        perfData,
+        kwData,
+        deviceData,
+        geoData,
+        hourlyData,
+        competitiveData,
+      ] = await Promise.all([
+        getPerformanceOverview(dateParams),
+        getKeywordAnalysis({ ...dateParams, limit: 20 }),
+        getDeviceBreakdown(dateParams),
+        getGeoBreakdown(dateParams),
+        getHourlyPerformance(dateParams),
+        getCompetitiveAnalysis(dateParams),
+      ]);
 
-        try {
-            // Using Promise.all for parallel fetching - ALL real API calls
-            const [
-                perfData,
-                kwData,
-                deviceData,
-                geoData,
-                hourlyData,
-                competitiveData,
-            ] = await Promise.all([
-                getPerformanceOverview(dateParams),
-                getKeywordAnalysis({ ...dateParams, limit: 20 }),
-                getDeviceBreakdown(dateParams),
-                getGeoBreakdown(dateParams),
-                getHourlyPerformance(dateParams),
-                getCompetitiveAnalysis(dateParams),
-            ]);
+      setPerformanceMetrics(perfData);
+      setKeywords(kwData || []);
+      setDevices(deviceData || []);
+      setGeos(geoData || []);
+      setHourly(hourlyData || []);
+      setCompetitive(competitiveData || []);
 
-            setPerformanceMetrics(perfData);
-            setKeywords(kwData || []);
-            setDevices(deviceData || []);
-            setGeos(geoData || []);
-            setHourly(hourlyData || []);
-            setCompetitive(competitiveData || []);
-            
-        } catch (error) {
-            console.error("Failed to load analysis data:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, [
-      dateRange
-    ]);
+    } catch (error) {
+      console.error("Failed to load analysis data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [dateRange]);
 
-    // Load data on mount and when date range changes
-    // FIX: We now include the stable 'loadData' in the dependency array
-    // This satisfies the React linting rule.
-    useEffect(() => {
-        loadData();
-    }, [dateRange, loadData]);
+  // Load data on mount and when date range changes
+  useEffect(() => {
+    loadData();
+  }, [dateRange, loadData]);
 
   return (
     <div className="space-y-6">

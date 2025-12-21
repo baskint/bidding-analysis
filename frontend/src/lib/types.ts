@@ -18,7 +18,7 @@ export interface ApiResponse<T> {
 export interface ApiError {
   error: string;
   code?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -80,7 +80,7 @@ export interface FraudAlert {
   bid_event_id: string;
   fraud_type: string;
   confidence_score: number;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   status: 'pending' | 'acknowledged' | 'dismissed';
   created_at: string;
 }

@@ -225,7 +225,7 @@ export default function PredictPage() {
                     </li>
                     <li className="flex items-start">
                       <span className="text-purple-600 mr-2">•</span>
-                      <span>Click "Get ML Prediction" to get AI-powered recommendations</span>
+                      <span>Click &quot;Get ML Prediction&quot; to get AI-powered recommendations</span>
                     </li>
                     <li className="flex items-start">
                       <span className="text-green-600 mr-2">•</span>
