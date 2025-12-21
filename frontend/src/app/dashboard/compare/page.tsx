@@ -2,16 +2,8 @@
 'use client';
 import { useState } from 'react';
 import { Brain, Zap, Lock, Unlock, Trophy } from 'lucide-react';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-
-const getAuthHeaders = () => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` }),
-  };
-};
+import { apiPost, formatCurrency, formatPercent } from '@/lib/utils';
+import type { PredictionRequest, PredictionResult } from '@/lib/types';
 
 interface ScenarioParams {
   name: string;
@@ -23,17 +15,8 @@ interface ScenarioParams {
   userSegment: string;
 }
 
-interface PredictionResult {
-  predicted_bid: number;
-  confidence: number;
-  strategy: string;
-  fraud_risk: boolean;
-  reasoning: string;
-}
-
 export default function ComparePage() {
   const [campaignId] = useState('550e8400-e29b-41d4-a716-446655440000');
-
   // Three scenarios
   const [scenarios, setScenarios] = useState<ScenarioParams[]>([
     {
@@ -73,13 +56,13 @@ export default function ComparePage() {
   });
 
   const updateScenario = (
-    index: number,
-    field: keyof ScenarioParams,
+    index: number, 
+    field: keyof ScenarioParams, 
     value: string | number
   ) => {
     const newScenarios = [...scenarios];
     newScenarios[index] = { ...newScenarios[index], [field]: value };
-
+    
     // If locked, update all scenarios
     if (lockedParams[field as keyof typeof lockedParams]) {
       newScenarios.forEach((scenario, i) => {
@@ -88,7 +71,7 @@ export default function ComparePage() {
         }
       });
     }
-
+    
     setScenarios(newScenarios);
   };
 
@@ -99,32 +82,22 @@ export default function ComparePage() {
 
     try {
       const scenario = scenarios[index];
-      const response = await fetch(API_BASE_URL + '/trpc/bidding.predict', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          campaign_id: campaignId,
-          floor_price: scenario.floorPrice,
-          user_segment: scenario.userSegment,
-          device_type: scenario.deviceType,
-          country: scenario.country,
-          keywords: ['technology', 'gadgets'],
-          engagement_score: scenario.engagementScore,
-          conversion_probability: scenario.conversionProbability,
-        }),
-      });
+      const requestData: PredictionRequest = {
+        campaign_id: campaignId,
+        floor_price: scenario.floorPrice,
+        user_segment: scenario.userSegment,
+        device_type: scenario.deviceType,
+        country: scenario.country,
+        keywords: ['technology', 'gadgets'],
+        engagement_score: scenario.engagementScore,
+        conversion_probability: scenario.conversionProbability,
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to get prediction');
-      }
-
-      const data = await response.json();
-
-      if (data.result && data.result.data) {
-        const newPredictions = [...predictions];
-        newPredictions[index] = data.result.data;
-        setPredictions(newPredictions);
-      }
+      const result = await apiPost<PredictionResult>('/trpc/bidding.predict', requestData);
+      
+      const newPredictions = [...predictions];
+      newPredictions[index] = result;
+      setPredictions(newPredictions);
     } catch (err) {
       console.error('Prediction error:', err);
     } finally {
@@ -138,21 +111,6 @@ export default function ComparePage() {
     await Promise.all([0, 1, 2].map(i => predictScenario(i)));
   };
 
-  const getBestScenario = () => {
-    const validPredictions = predictions
-      .map((p, i) => ({ prediction: p, index: i }))
-      .filter(({ prediction }) => prediction !== null);
-
-    if (validPredictions.length === 0) return null;
-
-    // Find scenario with highest predicted bid
-    return validPredictions.reduce((best, current) => {
-      if (!best.prediction || !current.prediction) return best;
-      return current.prediction.predicted_bid > best.prediction.predicted_bid ? current : best;
-    });
-  };
-
-  // Add this function near the top with other functions
   const resetToDefaults = () => {
     setScenarios([
       {
@@ -185,6 +143,20 @@ export default function ComparePage() {
     ]);
     setPredictions([null, null, null]);
     setLockedParams({ country: false, userSegment: false });
+  };
+
+  const getBestScenario = () => {
+    const validPredictions = predictions
+      .map((p, i) => ({ prediction: p, index: i }))
+      .filter(({ prediction }) => prediction !== null);
+    
+    if (validPredictions.length === 0) return null;
+    
+    // Find scenario with highest predicted bid
+    return validPredictions.reduce((best, current) => {
+      if (!best.prediction || !current.prediction) return best;
+      return current.prediction.predicted_bid > best.prediction.predicted_bid ? current : best;
+    });
   };
 
   const bestScenario = getBestScenario();
@@ -268,7 +240,7 @@ export default function ComparePage() {
               <div>
                 <label className="flex items-center justify-between text-xs font-medium text-slate-700 mb-1">
                   <span>Floor Price</span>
-                  <span className="text-blue-600 font-semibold">${scenario.floorPrice.toFixed(2)}</span>
+                  <span className="text-blue-600 font-semibold">{formatCurrency(scenario.floorPrice)}</span>
                 </label>
                 <input
                   type="range"
@@ -285,7 +257,7 @@ export default function ComparePage() {
               <div>
                 <label className="flex items-center justify-between text-xs font-medium text-slate-700 mb-1">
                   <span>Engagement</span>
-                  <span className="text-purple-600 font-semibold">{(scenario.engagementScore * 100).toFixed(0)}%</span>
+                  <span className="text-purple-600 font-semibold">{formatPercent(scenario.engagementScore)}</span>
                 </label>
                 <input
                   type="range"
@@ -302,7 +274,7 @@ export default function ComparePage() {
               <div>
                 <label className="flex items-center justify-between text-xs font-medium text-slate-700 mb-1">
                   <span>Conversion</span>
-                  <span className="text-green-600 font-semibold">{(scenario.conversionProbability * 100).toFixed(0)}%</span>
+                  <span className="text-green-600 font-semibold">{formatPercent(scenario.conversionProbability)}</span>
                 </label>
                 <input
                   type="range"
@@ -390,11 +362,11 @@ export default function ComparePage() {
                 <div className="text-center mb-2">
                   <div className="text-xs text-slate-600 mb-1">Predicted Bid</div>
                   <div className={'text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r ' + scenarioColors[index]}>
-                    ${predictions[index]!.predicted_bid.toFixed(4)}
+                    {formatCurrency(predictions[index]!.predicted_bid)}
                   </div>
                 </div>
                 <div className="text-xs text-slate-600 text-center">
-                  {(predictions[index]!.confidence * 100).toFixed(0)}% confidence
+                  {formatPercent(predictions[index]!.confidence, 0)} confidence
                 </div>
               </div>
             )}
@@ -410,9 +382,9 @@ export default function ComparePage() {
             {scenarios.map((scenario, index) => {
               const prediction = predictions[index];
               if (!prediction) return null;
-
+              
               const isBest = bestScenario && bestScenario.index === index;
-
+              
               return (
                 <div key={index} className={'p-4 rounded-lg border-2 ' + (isBest ? 'border-yellow-400 bg-yellow-50' : 'border-slate-200')}>
                   <div className="flex items-center justify-between mb-2">
@@ -422,17 +394,17 @@ export default function ComparePage() {
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-slate-600">Bid:</span>
-                      <span className="font-bold">${prediction.predicted_bid.toFixed(4)}</span>
+                      <span className="font-bold">{formatCurrency(prediction.predicted_bid)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-600">vs Floor:</span>
                       <span className={'font-bold ' + (prediction.predicted_bid > scenario.floorPrice ? 'text-green-600' : 'text-red-600')}>
-                        {((prediction.predicted_bid - scenario.floorPrice) / scenario.floorPrice * 100).toFixed(1)}%
+                        {formatPercent((prediction.predicted_bid - scenario.floorPrice) / scenario.floorPrice, 1)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-600">Confidence:</span>
-                      <span className="font-bold">{(prediction.confidence * 100).toFixed(0)}%</span>
+                      <span className="font-bold">{formatPercent(prediction.confidence, 0)}</span>
                     </div>
                   </div>
                 </div>
