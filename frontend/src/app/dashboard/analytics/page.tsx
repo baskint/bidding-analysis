@@ -106,7 +106,7 @@ function GeoBreakdownTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {geos.map((geo, idx) => (
+            {geos && geos.length > 0 && geos.map((geo, idx) => (
               <tr key={idx} className="hover:bg-slate-50">
                 <td className="py-3">
                   <div>
@@ -175,7 +175,7 @@ function HourlyPerformanceChart({
     );
   }
 
-  const maxBids = Math.max(...hourly.map((h) => h.total_bids), 1);
+  const maxBids = (hourly && hourly.length > 0) ? Math.max(...hourly.map((h) => h.total_bids), 1) : 0;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -187,7 +187,7 @@ function HourlyPerformanceChart({
       </div>
 
       <div className="grid grid-cols-12 gap-2">
-        {hourly.map((h) => (
+        {hourly && hourly.length > 0 && hourly.map((h) => (
           <div key={h.hour} className="flex flex-col items-center space-y-1">
             <div
               className="w-full bg-gradient-to-t from-orange-500 to-yellow-400 rounded-t"
@@ -205,7 +205,7 @@ function HourlyPerformanceChart({
         <div>
           <p className="text-slate-600">Best Hour</p>
           <p className="text-lg font-bold text-slate-900">
-            {hourly.reduce((max, h) =>
+            {hourly && hourly.length > 0 && hourly.reduce((max, h) =>
               h.total_bids > max.total_bids ? h : max,
             ).hour}
             :00
@@ -214,7 +214,7 @@ function HourlyPerformanceChart({
         <div>
           <p className="text-slate-600">Peak Win Rate</p>
           <p className="text-lg font-bold text-blue-600">
-            {formatPercent(
+            {hourly && hourly.length > 0 && formatPercent(
               hourly.reduce((max, h) =>
                 h.win_rate > max.win_rate ? h : max,
               ).win_rate
@@ -224,7 +224,7 @@ function HourlyPerformanceChart({
         <div>
           <p className="text-slate-600">Peak Conv. Rate</p>
           <p className="text-lg font-bold text-green-600">
-            {formatPercent(
+            {hourly && hourly.length > 0 && formatPercent(
               hourly.reduce((max, h) =>
                 h.conversion_rate > max.conversion_rate ? h : max,
               ).conversion_rate
@@ -277,7 +277,7 @@ function CompetitiveAnalysisCard({
       </div>
 
       <div className="space-y-4">
-        {competitive.slice(0, 5).map((comp, idx) => (
+        {competitive.length > 0 && competitive.slice(0, 5).map((comp, idx) => (
           <div
             key={idx}
             className="p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"

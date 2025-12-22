@@ -49,7 +49,7 @@ func NewBidPredictorHTTP(serviceURL string) (Predictor, error) {
 	if serviceURL == "" {
 		serviceURL = os.Getenv("ML_SERVICE_URL")
 		if serviceURL == "" {
-			serviceURL = "http://localhost:5000"
+			serviceURL = "http://localhost:5001"
 		}
 	}
 

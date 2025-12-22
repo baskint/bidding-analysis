@@ -123,9 +123,9 @@ def predict():
 
 
 if __name__ == '__main__':
-  logger.info("🚀 Starting on port 5000")
+  logger.info("🚀 Starting on port 5001")
   load_model()
-  app.run(host='0.0.0.0', port=5000, debug=False)
+  app.run(host='0.0.0.0', port=5001, debug=False)
 else:
   # When running with gunicorn
   load_model()
