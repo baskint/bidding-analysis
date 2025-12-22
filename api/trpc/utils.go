@@ -95,3 +95,35 @@ func writeError(w http.ResponseWriter, code int, message string, err error) {
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(response)
 }
+
+// Helper function to parse date range with defaults
+func parseDateRange(startDateStr, endDateStr string) (time.Time, time.Time) {
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -30) // Default to last 30 days
+
+	// Handle Z or lack of explicit time by using ParseInLocation and setting time to 00:00:00
+	location, _ := time.LoadLocation("UTC")
+
+	if startDateStr != "" {
+		if parsed, err := time.ParseInLocation("2006-01-02", startDateStr, location); err == nil {
+			startDate = parsed
+		} else if parsed, err := time.Parse(time.RFC3339, startDateStr); err == nil {
+			startDate = parsed.In(location)
+		}
+	}
+
+	if endDateStr != "" {
+		if parsed, err := time.ParseInLocation("2006-01-02", endDateStr, location); err == nil {
+			endDate = parsed
+		} else if parsed, err := time.Parse(time.RFC3339, endDateStr); err == nil {
+			endDate = parsed.In(location)
+		}
+	}
+
+	// Ensure endDate includes full day (up to 23:59:59.999...)
+	// Only add if the date parsing was ambiguous (e.g., "YYYY-MM-DD")
+	// If RFC3339 was used (like in the curl), it already has time info, but we apply the shift here defensively.
+	endDate = endDate.Add(24 * time.Hour).Add(-1 * time.Second)
+
+	return startDate, endDate
+}

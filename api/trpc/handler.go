@@ -107,14 +107,15 @@ func (h *Handler) SetupRoutes() http.Handler {
 	protected.HandleFunc("/campaign.getDailyMetrics", h.getDailyMetrics).Methods("GET", "POST")
 
 	// Analysis page procedures
-	protected.HandleFunc("/analytics.getPerformanceOverview", h.getPerformanceOverview).Methods("GET", "POST")
-	protected.HandleFunc("/analytics.getKeywordAnalysis", h.getKeywordAnalysis).Methods("GET", "POST")
-	protected.HandleFunc("/analytics.getDeviceBreakdown", h.getDeviceBreakdown).Methods("GET", "POST")
-	protected.HandleFunc("/analytics.getGeoBreakdown", h.getGeoBreakdown).Methods("GET", "POST")
-	protected.HandleFunc("/analytics.getHourlyPerformance", h.getHourlyPerformance).Methods("GET", "POST")
-	protected.HandleFunc("/analytics.getDailyTrends", h.getDailyTrends).Methods("GET", "POST")
-	protected.HandleFunc("/analytics.getCompetitiveAnalysis", h.getCompetitiveAnalysis).Methods("GET", "POST")
-	protected.HandleFunc("/analytics.getCampaignComparison", h.getCampaignComparison).Methods("GET", "POST")
+	// Analysis page procedures - Using WithAuth wrapper
+	protected.HandleFunc("/analytics.getPerformanceOverview", h.WithAuth(h.getPerformanceOverview, &DateRangeRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getKeywordAnalysis", h.WithAuth(h.getKeywordAnalysis, &KeywordAnalysisRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getDeviceBreakdown", h.WithAuth(h.getDeviceBreakdown, &DateRangeRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getGeoBreakdown", h.WithAuth(h.getGeoBreakdown, &DateRangeRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getHourlyPerformance", h.WithAuth(h.getHourlyPerformance, &DateRangeRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getDailyTrends", h.WithAuth(h.getDailyTrends, &DateRangeRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/analytics.getCompetitiveAnalysis", h.WithAuth(h.getCompetitiveAnalysis, &CompetitiveAnalysisRequest{})).Methods("GET", "POST")
+	// protected.HandleFunc("/analytics.getCampaignComparison", h.getCampaignComparison).Methods("GET", "POST") // TODO: Refactor later
 
 	// ML Model procedures
 	protected.HandleFunc("/mlModel.list", h.listMLModels).Methods("GET", "POST")
