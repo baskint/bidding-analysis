@@ -1,9 +1,8 @@
-// api/trpc/ml_model_handlers.go
 package trpc
 
 import (
-	"encoding/json"
-	"log"
+	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -11,329 +10,217 @@ import (
 	"github.com/google/uuid"
 )
 
-// listMLModels retrieves all ML models for the current user
-func (h *Handler) listMLModels(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
-	}
+// Request types
+type ListMLModelsRequest struct {
+	Page     int `json:"page"`
+	PageSize int `json:"pageSize"`
+}
 
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
-		return
-	}
+type GetMLModelRequest struct {
+	ID string `json:"id"`
+}
 
-	// Parse pagination parameters
+type CreateMLModelRequest struct {
+	models.MLModelCreate
+}
+
+type UpdateMLModelRequest struct {
+	ID string `json:"id"`
+	models.MLModelUpdate
+}
+
+type DeleteMLModelRequest struct {
+	ID string `json:"id"`
+}
+
+type SetDefaultMLModelRequest struct {
+	ID string `json:"id"`
+}
+
+type GetDefaultMLModelRequest struct {
+	Type string `json:"type"`
+}
+
+// ============================================================================
+// REFACTORED HANDLERS
+// ============================================================================
+
+// listMLModels retrieves all ML models for the current user with pagination
+// This handler needs special handling for query params
+func (h *Handler) listMLModels(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	// req will be *http.Request for query param handlers
+	// We'll need to handle this specially
 	page := 1
 	pageSize := 20
 
-	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
-		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
-			page = p
+	// Try to extract from request if it's the right type
+	if r, ok := req.(*http.Request); ok {
+		if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+			if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+				page = p
+			}
+		}
+		if pageSizeStr := r.URL.Query().Get("pageSize"); pageSizeStr != "" {
+			if ps, err := strconv.Atoi(pageSizeStr); err == nil && ps > 0 && ps <= 100 {
+				pageSize = ps
+			}
 		}
 	}
 
-	if pageSizeStr := r.URL.Query().Get("pageSize"); pageSizeStr != "" {
-		if ps, err := strconv.Atoi(pageSizeStr); err == nil && ps > 0 && ps <= 100 {
-			pageSize = ps
-		}
-	}
-
-	response, err := h.mlModelStore.List(r.Context(), userUUID, page, pageSize)
+	response, err := h.mlModelStore.List(ctx, userID, page, pageSize)
 	if err != nil {
-		log.Printf("Failed to list ML models: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve ML models", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("failed to list ML models: %w", err)
 	}
 
-	h.writeTRPCResponse(w, response)
+	return response, nil
 }
 
 // getMLModel retrieves a specific ML model by ID
-func (h *Handler) getMLModel(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
-	}
+func (h *Handler) getMLModel(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	var modelID string
 
-	var req struct {
-		ID string `json:"id"`
-	}
-
-	// Try to get ID from query parameter first
-	modelID := r.URL.Query().Get("id")
-	if modelID == "" {
-		// If not in query, try body
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-		modelID = req.ID
+	// Handle both query param and body request
+	switch r := req.(type) {
+	case *http.Request:
+		modelID = r.URL.Query().Get("id")
+	case *GetMLModelRequest:
+		modelID = r.ID
+	default:
+		return nil, fmt.Errorf("invalid request type")
 	}
 
 	if modelID == "" {
-		h.writeErrorResponse(w, "Model ID is required", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("model ID is required")
 	}
 
-	id, err := uuid.Parse(modelID)
+	modelUUID, err := uuid.Parse(modelID)
 	if err != nil {
-		h.writeErrorResponse(w, "Invalid model ID format", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("invalid model ID format")
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	model, err := h.mlModelStore.GetByID(ctx, modelUUID, userID)
 	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("failed to get ML model: %w", err)
 	}
 
-	model, err := h.mlModelStore.GetByID(r.Context(), id, userUUID)
-	if err != nil {
-		log.Printf("Failed to get ML model: %v", err)
-		h.writeErrorResponse(w, "Model not found", http.StatusNotFound)
-		return
-	}
-
-	h.writeTRPCResponse(w, model)
+	return model, nil
 }
 
 // createMLModel creates a new ML model
-func (h *Handler) createMLModel(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
-	}
-
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
-		return
-	}
-
-	var input models.MLModelCreate
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
+func (h *Handler) createMLModel(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	params := req.(*CreateMLModelRequest)
 
 	// Validate required fields
-	if input.Name == "" {
-		h.writeErrorResponse(w, "Model name is required", http.StatusBadRequest)
-		return
+	if params.Name == "" {
+		return nil, fmt.Errorf("model name is required")
 	}
-	if input.Type == "" {
-		h.writeErrorResponse(w, "Model type is required", http.StatusBadRequest)
-		return
+	if params.Type == "" {
+		return nil, fmt.Errorf("model type is required")
 	}
-	if input.Version == "" {
-		h.writeErrorResponse(w, "Model version is required", http.StatusBadRequest)
-		return
-	}
-	if input.Provider == "" {
-		h.writeErrorResponse(w, "Model provider is required", http.StatusBadRequest)
-		return
+	if params.Provider == "" {
+		return nil, fmt.Errorf("model provider is required")
 	}
 
-	// Initialize config if nil
-	if input.Config == nil {
-		input.Config = make(map[string]interface{})
-	}
-
-	model, err := h.mlModelStore.Create(r.Context(), userUUID, &input)
+	model, err := h.mlModelStore.Create(ctx, userID, &params.MLModelCreate)
 	if err != nil {
-		log.Printf("Failed to create ML model: %v", err)
-		h.writeErrorResponse(w, "Failed to create ML model", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("failed to create ML model: %w", err)
 	}
 
-	h.writeTRPCResponse(w, model)
+	return model, nil
 }
 
 // updateMLModel updates an existing ML model
-func (h *Handler) updateMLModel(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
+func (h *Handler) updateMLModel(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	params := req.(*UpdateMLModelRequest)
+
+	if params.ID == "" {
+		return nil, fmt.Errorf("model ID is required")
 	}
 
-	var req struct {
-		ID string `json:"id"`
-		models.MLModelUpdate
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if req.ID == "" {
-		h.writeErrorResponse(w, "Model ID is required", http.StatusBadRequest)
-		return
-	}
-
-	id, err := uuid.Parse(req.ID)
+	modelUUID, err := uuid.Parse(params.ID)
 	if err != nil {
-		h.writeErrorResponse(w, "Invalid model ID format", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("invalid model ID format")
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	model, err := h.mlModelStore.Update(ctx, userID, modelUUID, &params.MLModelUpdate)
 	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("failed to update ML model: %w", err)
 	}
 
-	model, err := h.mlModelStore.Update(r.Context(), id, userUUID, &req.MLModelUpdate)
-	if err != nil {
-		log.Printf("Failed to update ML model: %v", err)
-		h.writeErrorResponse(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	h.writeTRPCResponse(w, model)
+	return model, nil
 }
 
-// deleteMLModel soft deletes an ML model
-func (h *Handler) deleteMLModel(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
+// deleteMLModel deletes an ML model
+func (h *Handler) deleteMLModel(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	params := req.(*DeleteMLModelRequest)
+
+	if params.ID == "" {
+		return nil, fmt.Errorf("model ID is required")
 	}
 
-	var req struct {
-		ID string `json:"id"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if req.ID == "" {
-		h.writeErrorResponse(w, "Model ID is required", http.StatusBadRequest)
-		return
-	}
-
-	id, err := uuid.Parse(req.ID)
+	modelUUID, err := uuid.Parse(params.ID)
 	if err != nil {
-		h.writeErrorResponse(w, "Invalid model ID format", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("invalid model ID format")
 	}
 
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
-		return
+	if err := h.mlModelStore.Delete(ctx, userID, modelUUID); err != nil {
+		return nil, fmt.Errorf("failed to delete ML model: %w", err)
 	}
 
-	if err := h.mlModelStore.Delete(r.Context(), id, userUUID); err != nil {
-		log.Printf("Failed to delete ML model: %v", err)
-		h.writeErrorResponse(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	h.writeTRPCResponse(w, map[string]interface{}{
+	return map[string]interface{}{
 		"success": true,
-		"message": "Model deleted successfully",
-	})
+		"message": "ML model deleted successfully",
+	}, nil
 }
 
-// setDefaultMLModel sets a model as the default for its type
-func (h *Handler) setDefaultMLModel(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
+// setDefaultMLModel sets an ML model as the default for its type
+func (h *Handler) setDefaultMLModel(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	params := req.(*SetDefaultMLModelRequest)
+
+	if params.ID == "" {
+		return nil, fmt.Errorf("model ID is required")
 	}
 
-	var req struct {
-		ID string `json:"id"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if req.ID == "" {
-		h.writeErrorResponse(w, "Model ID is required", http.StatusBadRequest)
-		return
-	}
-
-	id, err := uuid.Parse(req.ID)
+	modelUUID, err := uuid.Parse(params.ID)
 	if err != nil {
-		h.writeErrorResponse(w, "Invalid model ID format", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("invalid model ID format")
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	if err := h.mlModelStore.SetAsDefault(ctx, modelUUID, userID); err != nil {
+		return nil, fmt.Errorf("failed to set default ML model: %w", err)
+	}
+
+	// Get the updated model to return
+	model, err := h.mlModelStore.GetByID(ctx, modelUUID, userID)
 	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("failed to get updated ML model: %w", err)
 	}
 
-	if err := h.mlModelStore.SetAsDefault(r.Context(), id, userUUID); err != nil {
-		log.Printf("Failed to set default ML model: %v", err)
-		h.writeErrorResponse(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Return the updated model
-	model, err := h.mlModelStore.GetByID(r.Context(), id, userUUID)
-	if err != nil {
-		h.writeErrorResponse(w, "Model updated but failed to retrieve", http.StatusInternalServerError)
-		return
-	}
-
-	h.writeTRPCResponse(w, model)
+	return model, nil
 }
 
-// getDefaultMLModel retrieves the default model for a specific type
-func (h *Handler) getDefaultMLModel(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
-	}
+// getDefaultMLModel retrieves the default ML model for a specific type
+func (h *Handler) getDefaultMLModel(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	var modelType string
 
-	var req struct {
-		Type string `json:"type"`
-	}
-
-	// Try query parameter first
-	modelType := r.URL.Query().Get("type")
-	if modelType == "" {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-		modelType = req.Type
+	// Handle both query param and body request
+	switch r := req.(type) {
+	case *http.Request:
+		modelType = r.URL.Query().Get("type")
+	case *GetDefaultMLModelRequest:
+		modelType = r.Type
+	default:
+		return nil, fmt.Errorf("invalid request type")
 	}
 
 	if modelType == "" {
-		h.writeErrorResponse(w, "Model type is required", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("model type is required")
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	model, err := h.mlModelStore.GetDefaultForType(ctx, userID, modelType)
 	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("failed to get default ML model: %w", err)
 	}
 
-	model, err := h.mlModelStore.GetDefaultForType(r.Context(), userUUID, modelType)
-	if err != nil {
-		log.Printf("Failed to get default ML model: %v", err)
-		h.writeErrorResponse(w, "No default model found for this type", http.StatusNotFound)
-		return
-	}
-
-	h.writeTRPCResponse(w, model)
+	return model, nil
 }

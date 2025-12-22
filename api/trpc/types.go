@@ -246,14 +246,14 @@ type DeviceBreakdown struct {
 	TotalBids  int64  `db:"total_bids" json:"totalBids"`
 
 	// ADDED RAW COUNTS/SPEND FROM SQL QUERY:
-	WonBids     int64   `db:"won_bids" json:"wonBids"`        // Fixes Line 278 error
-	Conversions int64   `db:"conversions" json:"conversions"` // Fixes Line 279 error
-	Spend       float64 `db:"spend" json:"spend"`             // Fixes Line 280 error
+	WonBids     int64   `db:"won_bids" json:"wonBids"`
+	Conversions int64   `db:"conversions" json:"conversions"`
+	Spend       float64 `db:"spend" json:"spend"`
 
 	// CALCULATED METRICS:
 	WinRate        float64 `db:"win_rate" json:"winRate"`
 	ConversionRate float64 `db:"conversion_rate" json:"conversionRate"`
-	AverageBid     float64 `db:"average_bid" json:"averageBid"` // Fixes Line 283 error
+	AverageBid     float64 `db:"average_bid" json:"averageBid"`
 
 	TotalSpend float64 `db:"total_spend" json:"totalSpend"` // You may want to rename 'Spend' to 'TotalSpend' for consistency if needed
 }
@@ -270,7 +270,6 @@ type CompetitiveAnalysis struct {
 }
 
 // KeywordAnalysis represents performance metrics for a specific keyword.
-// KeywordAnalysis represents performance metrics for a specific keyword.
 type KeywordAnalysis struct {
 	Keyword   string `db:"keyword" json:"keyword"`
 	TotalBids int64  `db:"total_bids" json:"totalBids"`
@@ -286,5 +285,4 @@ type KeywordAnalysis struct {
 	// ADDED CALCULATED METRICS:
 	CPA  float64 `db:"cpa" json:"cpa"`
 	ROAS float64 `db:"roas" json:"roas"`
-	// Note: I changed TotalBids, WonBids, and Conversions to int64 based on typical SQL COUNT() return type.
 }
