@@ -1,28 +1,12 @@
 // frontend/src/lib/api/alerts.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+/**
+ * Alert management API functions
+ */
 
-// Helper function to get auth headers
-const getAuthHeaders = (): Record<string, string> => {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
-};
-
-// Helper function to handle API responses
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || `API call failed: ${response.status}`);
-  }
-  const data = await response.json();
-  return data.result?.data || data;
-};
+import { apiPost } from '@/lib/utils';
 
 // Types
-export type AlertType = 
+export type AlertType =
   | "fraud"
   | "budget"
   | "performance"
@@ -95,34 +79,14 @@ export async function getAlerts(params?: {
   limit?: number;
   offset?: number;
 }): Promise<Alert[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/alerts.getAlerts`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(params || {}),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<Alert[]>('/trpc/alerts.getAlerts', params || {});
 }
 
 /**
  * Get alert overview and statistics
  */
 export async function getAlertOverview(days: number = 30): Promise<AlertOverview> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/alerts.getOverview`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ days }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<AlertOverview>('/trpc/alerts.getOverview', { days });
 }
 
 /**
@@ -133,21 +97,11 @@ export async function updateAlertStatus(
   status: AlertStatus,
   notes?: string
 ): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/alerts.updateStatus`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        alert_id: alertId,
-        status,
-        notes,
-      }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<{ success: boolean; message: string }>('/trpc/alerts.updateStatus', {
+    alert_id: alertId,
+    status,
+    notes,
+  });
 }
 
 /**
@@ -157,37 +111,20 @@ export async function bulkUpdateAlerts(
   alertIds: string[],
   status: AlertStatus
 ): Promise<{ success: boolean; message: string; updated_count: number }> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/alerts.bulkUpdate`,
+  return apiPost<{ success: boolean; message: string; updated_count: number }>(
+    '/trpc/alerts.bulkUpdate',
     {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        alert_ids: alertIds,
-        status,
-      }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
+      alert_ids: alertIds,
+      status,
+    }
   );
-  return handleResponse(response);
 }
 
 /**
  * Get alert rules
  */
 export async function getAlertRules(): Promise<AlertRule[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/alerts.getRules`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({}),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<AlertRule[]>('/trpc/alerts.getRules', {});
 }
 
 /**
@@ -196,17 +133,10 @@ export async function getAlertRules(): Promise<AlertRule[]> {
 export async function createAlertRule(
   rule: Omit<AlertRule, "id" | "created_at" | "updated_at">
 ): Promise<{ success: boolean; rule_id: string; message: string }> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/alerts.createRule`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(rule),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
+  return apiPost<{ success: boolean; rule_id: string; message: string }>(
+    '/trpc/alerts.createRule',
+    rule
   );
-  return handleResponse(response);
 }
 
 /**
@@ -216,20 +146,10 @@ export async function updateAlertRule(
   ruleId: string,
   updates: Partial<Omit<AlertRule, "id" | "created_at" | "updated_at">>
 ): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/alerts.updateRule`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        rule_id: ruleId,
-        ...updates,
-      }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<{ success: boolean; message: string }>('/trpc/alerts.updateRule', {
+    rule_id: ruleId,
+    ...updates,
+  });
 }
 
 /**
@@ -238,17 +158,10 @@ export async function updateAlertRule(
 export async function deleteAlertRule(
   ruleId: string
 ): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/alerts.deleteRule`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ rule_id: ruleId }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
+  return apiPost<{ success: boolean; message: string }>(
+    '/trpc/alerts.deleteRule',
+    { rule_id: ruleId }
   );
-  return handleResponse(response);
 }
 
 // Helper functions

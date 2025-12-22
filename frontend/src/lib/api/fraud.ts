@@ -1,26 +1,9 @@
 // frontend/src/lib/api/fraud.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+/**
+ * Fraud detection and monitoring API functions
+ */
 
-// Helper function to get auth headers
-const getAuthHeaders = (): Record<string, string> => {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
-};
-
-// Helper function to handle API responses
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || `API call failed: ${response.status}`);
-  }
-  const data = await response.json();
-  // tRPC wraps responses in result.data
-  return data.result?.data || data;
-};
+import { apiPost } from '@/lib/utils';
 
 // Types
 export interface FraudOverview {
@@ -85,17 +68,7 @@ export interface GeoFraud {
  * Get fraud overview metrics
  */
 export async function getFraudOverview(days: number = 30): Promise<FraudOverview> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/fraud.getOverview`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ days }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<FraudOverview>('/trpc/fraud.getOverview', { days });
 }
 
 /**
@@ -109,17 +82,7 @@ export async function getRealFraudAlerts(params?: {
   end_date?: string;
   limit?: number;
 }): Promise<FraudAlert[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/fraud.getAlerts`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(params || {}),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<FraudAlert[]>('/trpc/fraud.getAlerts', params || {});
 }
 
 /**
@@ -130,72 +93,32 @@ export async function updateFraudAlert(
   status: string,
   notes?: string
 ): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/fraud.updateAlert`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        alert_id: alertId,
-        status,
-        notes,
-      }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<{ success: boolean; message: string }>('/trpc/fraud.updateAlert', {
+    alert_id: alertId,
+    status,
+    notes,
+  });
 }
 
 /**
  * Get fraud trends over time
  */
 export async function getFraudTrends(days: number = 30): Promise<FraudTrend[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/fraud.getTrends`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ days }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<FraudTrend[]>('/trpc/fraud.getTrends', { days });
 }
 
 /**
  * Get device-specific fraud analysis
  */
 export async function getDeviceFraudAnalysis(days: number = 30): Promise<DeviceFraud[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/fraud.getDeviceAnalysis`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ days }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<DeviceFraud[]>('/trpc/fraud.getDeviceAnalysis', { days });
 }
 
 /**
  * Get geographic fraud analysis
  */
 export async function getGeoFraudAnalysis(days: number = 30): Promise<GeoFraud[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/fraud.getGeoAnalysis`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ days }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<GeoFraud[]>('/trpc/fraud.getGeoAnalysis', { days });
 }
 
 /**
@@ -208,17 +131,10 @@ export async function createFraudAlert(params: {
   description: string;
   affected_user_ids?: string[];
 }): Promise<{ success: boolean; alert_id: string; message: string }> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/fraud.createAlert`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(params),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
+  return apiPost<{ success: boolean; alert_id: string; message: string }>(
+    '/trpc/fraud.createAlert',
+    params
   );
-  return handleResponse(response);
 }
 
 // Helper functions

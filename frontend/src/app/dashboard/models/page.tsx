@@ -7,10 +7,10 @@ import {
   updateMLModel,
   deleteMLModel,
   setDefaultMLModel,
-  type MLModel,
   type MLModelCreate,
   type MLModelUpdate,
 } from '@/lib/api/ml_models';
+import type { MLModel } from '@/lib/types';
 import ModelCard from './components/ModalCard';
 import ModelFormModal from './components/ModelFormModal';
 

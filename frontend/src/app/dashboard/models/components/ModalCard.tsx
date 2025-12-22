@@ -1,6 +1,6 @@
 'use client';
 
-import { MLModel } from '@/lib/api/ml_models';
+import type { MLModel } from '@/lib/types';
 
 const MODEL_TYPES = [
   { value: 'bidding_optimizer', label: 'Bidding Optimizer' },

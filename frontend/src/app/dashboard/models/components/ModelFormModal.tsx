@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { MLModel, MLModelCreate, MLModelUpdate } from '@/lib/api/ml_models';
+import { MLModelCreate, MLModelUpdate } from '@/lib/api/ml_models';
+import type { MLModel } from '@/lib/types';
 
 const MODEL_TYPES = [
   { value: 'bidding_optimizer', label: 'Bidding Optimizer' },

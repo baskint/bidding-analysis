@@ -67,9 +67,15 @@ export interface MLModel {
   id: string;
   user_id: string;
   name: string;
+  type: string;  // 'bidding_optimizer', 'fraud_detector', 'conversion_predictor'
   version: string;
-  model_type: string;
-  status: 'training' | 'active' | 'inactive' | 'failed';
+  description: string;
+  status: string;  // 'active', 'inactive', 'training', 'testing'
+  provider: string;  // 'openai', 'custom', 'tensorflow', 'pytorch'
+  endpoint?: string;
+  config: Record<string, unknown>;
+  metrics: Record<string, unknown>;
+  is_default: boolean;
   accuracy?: number;
   created_at: string;
   updated_at: string;

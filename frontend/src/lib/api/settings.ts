@@ -1,28 +1,11 @@
 // frontend/src/lib/api/settings.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+/**
+ * User settings and integrations API functions
+ */
 
-// Helper function to get auth headers
-const getAuthHeaders = (): Record<string, string> => {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
-};
+import { apiGet, apiPost, apiDelete } from '@/lib/utils';
 
-// Helper function to handle API responses
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || `API call failed: ${response.status}`);
-  }
-  const data = await response.json();
-  // tRPC wraps responses in result.data
-  return data.result?.data || data;
-};
-
-// Specific integration config types
+// Integration Config Types
 export interface GoogleAdsConfig {
   customer_id: string;
   developer_token: string;
@@ -61,11 +44,11 @@ export interface GenericIntegrationConfig {
 }
 
 // Union type for all possible configs
-export type IntegrationConfig = 
-  | GoogleAdsConfig 
-  | FacebookAdsConfig 
-  | SlackConfig 
-  | WebhookConfig 
+export type IntegrationConfig =
+  | GoogleAdsConfig
+  | FacebookAdsConfig
+  | SlackConfig
+  | WebhookConfig
   | GenericIntegrationConfig;
 
 // Helper to check config type
@@ -140,7 +123,7 @@ export interface Integration {
   api_secret?: string;
   webhook_url?: string;
   token_expires_at?: string;
-  config: IntegrationConfig; // Now uses the union type
+  config: IntegrationConfig;
   status: string;
   last_sync_at?: string;
   last_error?: string;
@@ -157,7 +140,7 @@ export interface IntegrationCreate {
   api_key?: string;
   api_secret?: string;
   webhook_url?: string;
-  config?: IntegrationConfig; // Now uses the union type
+  config?: IntegrationConfig;
 }
 
 export interface IntegrationUpdate {
@@ -167,7 +150,7 @@ export interface IntegrationUpdate {
   api_key?: string;
   api_secret?: string;
   webhook_url?: string;
-  config?: IntegrationConfig; // Now uses the union type
+  config?: IntegrationConfig;
   status?: string;
 }
 
@@ -190,224 +173,75 @@ export interface BillingInfo {
 }
 
 // User Settings API
-// ... (all your API functions remain the same, they'll automatically use the new types)
+
+/**
+ * Get current user settings
+ */
 export async function getUserSettings(): Promise<UserSettings> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/settings.get`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiGet<UserSettings>('/trpc/settings.get');
 }
 
+/**
+ * Update user settings
+ */
 export async function updateUserSettings(update: UserSettingsUpdate): Promise<UserSettings> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/settings.update`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(update),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<UserSettings>('/trpc/settings.update', update);
 }
 
+/**
+ * Regenerate API key
+ */
 export async function regenerateAPIKey(): Promise<{ api_key: string }> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/settings.regenerateAPIKey`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<{ api_key: string }>('/trpc/settings.regenerateAPIKey', {});
 }
 
 // Integrations API
+
+/**
+ * List all integrations
+ */
 export async function listIntegrations(): Promise<{ integrations: Integration[] }> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/integrations.list`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiGet<{ integrations: Integration[] }>('/trpc/integrations.list');
 }
 
+/**
+ * Get a single integration
+ */
 export async function getIntegration(id: string): Promise<Integration> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/integrations.get?id=${id}`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiGet<Integration>(`/trpc/integrations.get?id=${id}`);
 }
 
+/**
+ * Create a new integration
+ */
 export async function createIntegration(data: IntegrationCreate): Promise<Integration> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/integrations.create`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<Integration>('/trpc/integrations.create', data);
 }
 
+/**
+ * Update an integration
+ */
 export async function updateIntegration(id: string, data: IntegrationUpdate): Promise<Integration> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/integrations.update?id=${id}`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<Integration>('/trpc/integrations.update', { id, ...data });
 }
 
+/**
+ * Delete an integration
+ */
 export async function deleteIntegration(id: string): Promise<void> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/integrations.delete?id=${id}`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiDelete<void>(`/trpc/integrations.delete?id=${id}`);
 }
 
+/**
+ * Test an integration connection
+ */
 export async function testIntegration(id: string): Promise<{ message: string }> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/integrations.test?id=${id}`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
+  return apiPost<{ message: string }>('/trpc/integrations.test', { id });
 }
 
-// Billing API
+/**
+ * Get billing information
+ */
 export async function getBillingInfo(): Promise<BillingInfo> {
-  const response = await fetch(
-    `${API_BASE_URL}/trpc/billing.get`,
-    {
-      method: "GET",
-      headers: getAuthHeaders(),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  return handleResponse(response);
-}
-
-// Helper functions
-export function getIntegrationStatusColor(status: string): string {
-  switch (status) {
-    case "active":
-      return "text-green-600";
-    case "error":
-      return "text-red-600";
-    case "disabled":
-      return "text-gray-600";
-    case "pending":
-      return "text-yellow-600";
-    default:
-      return "text-slate-600";
-  }
-}
-
-export function getIntegrationStatusBadgeColor(status: string): string {
-  switch (status) {
-    case "active":
-      return "bg-green-100 text-green-800";
-    case "error":
-      return "bg-red-100 text-red-800";
-    case "disabled":
-      return "bg-gray-100 text-gray-800";
-    case "pending":
-      return "bg-yellow-100 text-yellow-800";
-    default:
-      return "bg-slate-100 text-slate-800";
-  }
-}
-
-export function getPlanTypeColor(plan: string): string {
-  switch (plan) {
-    case "enterprise":
-      return "text-purple-600";
-    case "premium":
-      return "text-blue-600";
-    case "standard":
-      return "text-green-600";
-    case "free":
-      return "text-gray-600";
-    default:
-      return "text-slate-600";
-  }
-}
-
-export function getPlanTypeBadgeColor(plan: string): string {
-  switch (plan) {
-    case "enterprise":
-      return "bg-purple-100 text-purple-800";
-    case "premium":
-      return "bg-blue-100 text-blue-800";
-    case "standard":
-      return "bg-green-100 text-green-800";
-    case "free":
-      return "bg-gray-100 text-gray-800";
-    default:
-      return "bg-slate-100 text-slate-800";
-  }
-}
-
-export function formatAlertFrequency(frequency: string): string {
-  switch (frequency) {
-    case "realtime":
-      return "Real-time";
-    case "hourly":
-      return "Hourly";
-    case "daily":
-      return "Daily";
-    case "weekly":
-      return "Weekly";
-    default:
-      return frequency
-        .split("_")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
-  }
-}
-
-export function formatProviderName(provider: string): string {
-  return provider
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+  return apiGet<BillingInfo>('/trpc/billing.get');
 }
