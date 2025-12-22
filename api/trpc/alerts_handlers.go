@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,7 +49,7 @@ type Alert struct {
 	Status         AlertStatus            `json:"status"`
 	Title          string                 `json:"title"`
 	Message        string                 `json:"message"`
-	CampaignID     *uuid.UUID             `json:"campaign_id,omitempty"`
+	CampaignID     string                 `json:"campaign_id,omitempty"`
 	CampaignName   string                 `json:"campaign_name,omitempty"`
 	Metadata       map[string]interface{} `json:"metadata,omitempty"`
 	CreatedAt      time.Time              `json:"created_at"`
@@ -60,50 +59,45 @@ type Alert struct {
 	Notes          string                 `json:"notes,omitempty"`
 }
 
-type AlertOverview struct {
-	TotalAlerts      int                      `json:"total_alerts"`
-	UnreadAlerts     int                      `json:"unread_alerts"`
-	CriticalAlerts   int                      `json:"critical_alerts"`
-	AlertsByType     map[AlertType]int        `json:"alerts_by_type"`
-	AlertsBySeverity map[AlertSeverity]int    `json:"alerts_by_severity"`
-	RecentTrend      []map[string]interface{} `json:"recent_trend"`
+// Request types
+type GetAlertsRequest struct {
+	Type       string `json:"type"`
+	Severity   string `json:"severity"`
+	Status     string `json:"status"`
+	CampaignID string `json:"campaign_id"`
+	StartDate  string `json:"start_date"`
+	EndDate    string `json:"end_date"`
+	Limit      int    `json:"limit"`
+	Offset     int    `json:"offset"`
 }
 
-// getAlerts retrieves all alerts with optional filtering
-func (h *Handler) getAlerts(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
-	}
+type AlertOverviewRequest struct {
+	Days int `json:"days"`
+}
 
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
-		return
-	}
+type UpdateAlertStatusRequest struct {
+	AlertID string `json:"alert_id"`
+	Status  string `json:"status"`
+	Notes   string `json:"notes"`
+}
 
-	var req struct {
-		Type       string `json:"type"`
-		Severity   string `json:"severity"`
-		Status     string `json:"status"`
-		CampaignID string `json:"campaign_id"`
-		StartDate  string `json:"start_date"`
-		EndDate    string `json:"end_date"`
-		Limit      int    `json:"limit"`
-		Offset     int    `json:"offset"`
-	}
+type BulkUpdateAlertsRequest struct {
+	AlertIDs []string `json:"alert_ids"`
+	Status   string   `json:"status"`
+}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("Failed to decode request, using defaults: %v", err)
-	}
+// ============================================================================
+// REFACTORED HANDLERS
+// ============================================================================
 
-	if req.Limit == 0 {
-		req.Limit = 100
-	}
+// getAlerts returns filtered alerts
+func (h *Handler) getAlerts(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	params := req.(*GetAlertsRequest)
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
+	// Set default limit
+	if params.Limit == 0 {
+		params.Limit = 100
+	}
 
 	// Build query with filters
 	query := `
@@ -118,29 +112,30 @@ func (h *Handler) getAlerts(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN campaigns c ON a.campaign_id = c.id
 		WHERE a.user_id = $1
 	`
-	args := []interface{}{userUUID}
+	args := []interface{}{userID}
 	argCount := 1
 
-	if req.Type != "" {
+	// Add filters
+	if params.Type != "" {
 		argCount++
 		query += fmt.Sprintf(" AND a.type = $%d", argCount)
-		args = append(args, req.Type)
+		args = append(args, params.Type)
 	}
 
-	if req.Severity != "" {
+	if params.Severity != "" {
 		argCount++
 		query += fmt.Sprintf(" AND a.severity = $%d", argCount)
-		args = append(args, req.Severity)
+		args = append(args, params.Severity)
 	}
 
-	if req.Status != "" {
+	if params.Status != "" {
 		argCount++
 		query += fmt.Sprintf(" AND a.status = $%d", argCount)
-		args = append(args, req.Status)
+		args = append(args, params.Status)
 	}
 
-	if req.CampaignID != "" {
-		campaignUUID, err := uuid.Parse(req.CampaignID)
+	if params.CampaignID != "" {
+		campaignUUID, err := uuid.Parse(params.CampaignID)
 		if err == nil {
 			argCount++
 			query += fmt.Sprintf(" AND a.campaign_id = $%d", argCount)
@@ -148,343 +143,387 @@ func (h *Handler) getAlerts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	query += fmt.Sprintf(" ORDER BY a.created_at DESC LIMIT $%d", argCount+1)
-	args = append(args, req.Limit)
-
-	if req.Offset > 0 {
-		query += fmt.Sprintf(" OFFSET $%d", argCount+2)
-		args = append(args, req.Offset)
+	if params.StartDate != "" {
+		startTime, err := time.Parse("2006-01-02", params.StartDate)
+		if err == nil {
+			argCount++
+			query += fmt.Sprintf(" AND a.created_at >= $%d", argCount)
+			args = append(args, startTime)
+		}
 	}
 
+	if params.EndDate != "" {
+		endTime, err := time.Parse("2006-01-02", params.EndDate)
+		if err == nil {
+			endTime = endTime.Add(24 * time.Hour)
+			argCount++
+			query += fmt.Sprintf(" AND a.created_at < $%d", argCount)
+			args = append(args, endTime)
+		}
+	}
+
+	query += " ORDER BY a.created_at DESC"
+
+	argCount++
+	query += fmt.Sprintf(" LIMIT $%d", argCount)
+	args = append(args, params.Limit)
+
+	if params.Offset > 0 {
+		argCount++
+		query += fmt.Sprintf(" OFFSET $%d", argCount)
+		args = append(args, params.Offset)
+	}
+
+	// Execute query
 	rows, err := h.bidStore.DB().QueryContext(ctx, query, args...)
 	if err != nil {
-		log.Printf("Failed to query alerts: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve alerts", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("failed to query alerts: %w", err)
 	}
 	defer rows.Close()
 
 	var alerts []Alert
 	for rows.Next() {
 		var alert Alert
-		var metadataJSON []byte
 		var campaignID sql.NullString
+		var campaignName sql.NullString
 		var acknowledgedAt sql.NullTime
 		var resolvedAt sql.NullTime
+		var metadataJSON string
 
 		err := rows.Scan(
-			&alert.ID, &alert.Type, &alert.Severity, &alert.Status,
-			&alert.Title, &alert.Message, &campaignID, &alert.CampaignName,
-			&metadataJSON, &alert.CreatedAt, &alert.UpdatedAt,
-			&acknowledgedAt, &resolvedAt, &alert.Notes,
+			&alert.ID,
+			&alert.Type,
+			&alert.Severity,
+			&alert.Status,
+			&alert.Title,
+			&alert.Message,
+			&campaignID,
+			&campaignName,
+			&metadataJSON,
+			&alert.CreatedAt,
+			&alert.UpdatedAt,
+			&acknowledgedAt,
+			&resolvedAt,
+			&alert.Notes,
 		)
 		if err != nil {
 			log.Printf("Error scanning alert row: %v", err)
 			continue
 		}
 
-		// Handle nullable campaign_id
 		if campaignID.Valid {
-			cid, err := uuid.Parse(campaignID.String)
-			if err == nil {
-				alert.CampaignID = &cid
-			}
+			alert.CampaignID = campaignID.String
 		}
-
-		// Handle nullable timestamps
+		if campaignName.Valid {
+			alert.CampaignName = campaignName.String
+		}
 		if acknowledgedAt.Valid {
 			alert.AcknowledgedAt = &acknowledgedAt.Time
 		}
-
 		if resolvedAt.Valid {
 			alert.ResolvedAt = &resolvedAt.Time
 		}
 
-		// Parse metadata JSON
-		if len(metadataJSON) > 0 && string(metadataJSON) != "{}" {
-			json.Unmarshal(metadataJSON, &alert.Metadata)
+		// Parse metadata JSON if present
+		if metadataJSON != "" && metadataJSON != "{}" {
+			var metadata map[string]interface{}
+			if err := json.Unmarshal([]byte(metadataJSON), &metadata); err == nil {
+				alert.Metadata = metadata
+			}
 		}
 
 		alerts = append(alerts, alert)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating alert rows: %w", err)
+	}
+
+	// Ensure we always return an array, even if empty
 	if alerts == nil {
 		alerts = []Alert{}
 	}
 
-	h.writeTRPCResponse(w, alerts)
+	return alerts, nil
 }
 
-// getAlertOverview retrieves alert statistics
-func (h *Handler) getAlertOverview(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
+// getAlertOverview returns alert statistics
+func (h *Handler) getAlertOverview(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	params := req.(*AlertOverviewRequest)
+
+	days := params.Days
+	if days <= 0 || days > 365 {
+		days = 30
 	}
 
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
-		return
-	}
+	startDate := time.Now().AddDate(0, 0, -days)
 
-	var req struct {
-		Days int `json:"days"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		req.Days = 30
-	}
-
-	if req.Days <= 0 || req.Days > 365 {
-		req.Days = 30
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-
-	startDate := time.Now().AddDate(0, 0, -req.Days)
-
-	// Get total and unread counts
-	// Get total and unread counts
-	var totalAlerts, unreadAlerts, criticalAlerts int
+	// Get total counts
 	query := `
-    SELECT
-        COUNT(*) as total,
-        COALESCE(SUM(CASE WHEN status = 'unread' THEN 1 ELSE 0 END), 0) as unread,
-        COALESCE(SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END), 0) as critical
-    FROM alerts
-    WHERE user_id = $1 AND created_at >= $2
-`
+		SELECT
+			COALESCE(COUNT(*), 0) as total_alerts,
+			COALESCE(SUM(CASE WHEN status = 'unread' THEN 1 ELSE 0 END), 0) as unread_alerts,
+			COALESCE(SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END), 0) as critical_alerts
+		FROM alerts
+		WHERE user_id = $1 AND created_at >= $2
+	`
 
-	err = h.bidStore.DB().QueryRowContext(ctx, query, userUUID, startDate).Scan(
-		&totalAlerts, &unreadAlerts, &criticalAlerts,
+	var overview struct {
+		TotalAlerts    int `json:"total_alerts"`
+		UnreadAlerts   int `json:"unread_alerts"`
+		CriticalAlerts int `json:"critical_alerts"`
+	}
+
+	err := h.bidStore.DB().QueryRowContext(ctx, query, userID, startDate).Scan(
+		&overview.TotalAlerts,
+		&overview.UnreadAlerts,
+		&overview.CriticalAlerts,
 	)
 	if err != nil {
-		log.Printf("Failed to get alert counts: %v", err)
-		h.writeErrorResponse(w, "Failed to retrieve alert overview", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("failed to get alert overview: %w", err)
 	}
 
-	// Get counts by type
-	alertsByType := make(map[AlertType]int)
-	rows, err := h.bidStore.DB().QueryContext(ctx, `
+	// Get alerts by type
+	alertsByType := make(map[string]int)
+	typeQuery := `
 		SELECT type, COUNT(*) as count
 		FROM alerts
 		WHERE user_id = $1 AND created_at >= $2
 		GROUP BY type
-	`, userUUID, startDate)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var alertType AlertType
-			var count int
-			if err := rows.Scan(&alertType, &count); err == nil {
-				alertsByType[alertType] = count
-			}
+	`
+	rows, err := h.bidStore.DB().QueryContext(ctx, typeQuery, userID, startDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get alerts by type: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var alertType string
+		var count int
+		if err := rows.Scan(&alertType, &count); err != nil {
+			log.Printf("Error scanning alert type: %v", err)
+			continue
 		}
+		alertsByType[alertType] = count
 	}
 
-	// Get counts by severity
-	alertsBySeverity := make(map[AlertSeverity]int)
-	rows2, err := h.bidStore.DB().QueryContext(ctx, `
+	// Get alerts by severity
+	alertsBySeverity := make(map[string]int)
+	severityQuery := `
 		SELECT severity, COUNT(*) as count
 		FROM alerts
 		WHERE user_id = $1 AND created_at >= $2
 		GROUP BY severity
-	`, userUUID, startDate)
-	if err == nil {
-		defer rows2.Close()
-		for rows2.Next() {
-			var severity AlertSeverity
-			var count int
-			if err := rows2.Scan(&severity, &count); err == nil {
-				alertsBySeverity[severity] = count
-			}
+	`
+	rows, err = h.bidStore.DB().QueryContext(ctx, severityQuery, userID, startDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get alerts by severity: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var severity string
+		var count int
+		if err := rows.Scan(&severity, &count); err != nil {
+			log.Printf("Error scanning severity: %v", err)
+			continue
 		}
+		alertsBySeverity[severity] = count
 	}
 
-	// Get recent trend (daily counts)
-	rows3, err := h.bidStore.DB().QueryContext(ctx, `
-		SELECT
-			DATE(created_at) as date,
-			COUNT(*) as count
+	// Get recent trend (last 30 days)
+	trendQuery := `
+		SELECT DATE(created_at) as date, COUNT(*) as count
 		FROM alerts
 		WHERE user_id = $1 AND created_at >= $2
 		GROUP BY DATE(created_at)
-		ORDER BY date DESC
-		LIMIT 30
-	`, userUUID, startDate)
+		ORDER BY date
+	`
+	rows, err = h.bidStore.DB().QueryContext(ctx, trendQuery, userID, startDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get alert trend: %w", err)
+	}
+	defer rows.Close()
 
-	var recentTrend []map[string]interface{}
-	if err == nil {
-		defer rows3.Close()
-		for rows3.Next() {
-			var date time.Time
-			var count int
-			if err := rows3.Scan(&date, &count); err == nil {
-				recentTrend = append(recentTrend, map[string]interface{}{
-					"date":  date.Format("2006-01-02"),
-					"count": count,
-				})
-			}
+	var recentTrend []struct {
+		Date  string `json:"date"`
+		Count int    `json:"count"`
+	}
+	for rows.Next() {
+		var date time.Time
+		var count int
+		if err := rows.Scan(&date, &count); err != nil {
+			log.Printf("Error scanning trend: %v", err)
+			continue
 		}
+		recentTrend = append(recentTrend, struct {
+			Date  string `json:"date"`
+			Count int    `json:"count"`
+		}{
+			Date:  date.Format("2006-01-02"),
+			Count: count,
+		})
 	}
 
-	overview := AlertOverview{
-		TotalAlerts:      totalAlerts,
-		UnreadAlerts:     unreadAlerts,
-		CriticalAlerts:   criticalAlerts,
-		AlertsByType:     alertsByType,
-		AlertsBySeverity: alertsBySeverity,
-		RecentTrend:      recentTrend,
-	}
-
-	h.writeTRPCResponse(w, overview)
+	return map[string]interface{}{
+		"total_alerts":       overview.TotalAlerts,
+		"unread_alerts":      overview.UnreadAlerts,
+		"critical_alerts":    overview.CriticalAlerts,
+		"alerts_by_type":     alertsByType,
+		"alerts_by_severity": alertsBySeverity,
+		"recent_trend":       recentTrend,
+	}, nil
 }
 
-// updateAlertStatus updates an alert's status
-func (h *Handler) updateAlertStatus(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
+// updateAlertStatus updates a single alert's status
+func (h *Handler) updateAlertStatus(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	params := req.(*UpdateAlertStatusRequest)
+
+	if params.AlertID == "" {
+		return nil, fmt.Errorf("alert_id is required")
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	alertUUID, err := uuid.Parse(params.AlertID)
 	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
-		return
+		return nil, fmt.Errorf("invalid alert_id format")
 	}
 
-	var req struct {
-		AlertID string      `json:"alert_id"`
-		Status  AlertStatus `json:"status"`
-		Notes   string      `json:"notes"`
+	validStatuses := map[string]bool{
+		"unread":       true,
+		"read":         true,
+		"acknowledged": true,
+		"resolved":     true,
+		"dismissed":    true,
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
-		return
+	if !validStatuses[params.Status] {
+		return nil, fmt.Errorf("invalid status: must be one of unread, read, acknowledged, resolved, dismissed")
 	}
 
-	alertID, err := uuid.Parse(req.AlertID)
-	if err != nil {
-		h.writeErrorResponse(w, "Invalid alert ID", http.StatusBadRequest)
-		return
+	// Update query
+	updateFields := []string{"status = $3", "updated_at = NOW()"}
+	args := []interface{}{alertUUID, userID, params.Status}
+	argCount := 3
+
+	if params.Status == "acknowledged" {
+		updateFields = append(updateFields, "acknowledged_at = NOW()")
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
-
-	// Verify ownership
-	var ownerID uuid.UUID
-	err = h.bidStore.DB().QueryRowContext(ctx, `SELECT user_id FROM alerts WHERE id = $1`, alertID).Scan(&ownerID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			h.writeErrorResponse(w, "Alert not found", http.StatusNotFound)
-		} else {
-			h.writeErrorResponse(w, "Database error", http.StatusInternalServerError)
-		}
-		return
+	if params.Status == "resolved" {
+		updateFields = append(updateFields, "resolved_at = NOW()")
 	}
 
-	if ownerID != userUUID {
-		h.writeErrorResponse(w, "Unauthorized", http.StatusForbidden)
-		return
+	if params.Notes != "" {
+		argCount++
+		updateFields = append(updateFields, fmt.Sprintf("notes = $%d", argCount))
+		args = append(args, params.Notes)
 	}
 
-	// Update status
-	query := `
+	query := fmt.Sprintf(`
 		UPDATE alerts
-		SET status = $1, updated_at = $2, notes = $3
-	`
-	args := []interface{}{req.Status, time.Now(), req.Notes}
+		SET %s
+		WHERE id = $1 AND user_id = $2
+	`, joinStrings(updateFields, ", "))
 
-	if req.Status == StatusAcknowledged {
-		query += ", acknowledged_at = $4"
-		args = append(args, time.Now())
-	} else if req.Status == StatusResolved {
-		query += ", resolved_at = $4"
-		args = append(args, time.Now())
-	}
-
-	query += fmt.Sprintf(" WHERE id = $%d", len(args)+1)
-	args = append(args, alertID)
-
-	_, err = h.bidStore.DB().ExecContext(ctx, query, args...)
+	result, err := h.bidStore.DB().ExecContext(ctx, query, args...)
 	if err != nil {
-		log.Printf("Failed to update alert status: %v", err)
-		h.writeErrorResponse(w, "Failed to update alert", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("failed to update alert status: %w", err)
 	}
 
-	h.writeTRPCResponse(w, map[string]interface{}{
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return nil, fmt.Errorf("alert not found or unauthorized")
+	}
+
+	return map[string]interface{}{
 		"success": true,
 		"message": "Alert status updated successfully",
-	})
+	}, nil
 }
 
-// bulkUpdateAlerts updates multiple alerts' statuses
-func (h *Handler) bulkUpdateAlerts(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	if userID == "" {
-		h.writeErrorResponse(w, "User not found in context", http.StatusUnauthorized)
-		return
+// bulkUpdateAlerts updates multiple alerts at once
+func (h *Handler) bulkUpdateAlerts(ctx context.Context, userID uuid.UUID, req interface{}) (interface{}, error) {
+	params := req.(*BulkUpdateAlertsRequest)
+
+	if len(params.AlertIDs) == 0 {
+		return nil, fmt.Errorf("alert_ids is required")
 	}
 
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		h.writeErrorResponse(w, "Invalid user ID", http.StatusBadRequest)
-		return
+	if len(params.AlertIDs) > 100 {
+		return nil, fmt.Errorf("cannot update more than 100 alerts at once")
 	}
 
-	var req struct {
-		AlertIDs []string    `json:"alert_ids"`
-		Status   AlertStatus `json:"status"`
+	validStatuses := map[string]bool{
+		"unread":       true,
+		"read":         true,
+		"acknowledged": true,
+		"resolved":     true,
+		"dismissed":    true,
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeErrorResponse(w, "Invalid request body", http.StatusBadRequest)
-		return
+	if !validStatuses[params.Status] {
+		return nil, fmt.Errorf("invalid status")
 	}
 
-	if len(req.AlertIDs) == 0 {
-		h.writeErrorResponse(w, "No alert IDs provided", http.StatusBadRequest)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-
-	// Convert alert IDs to UUIDs
+	// Parse alert IDs
 	var alertUUIDs []uuid.UUID
-	for _, idStr := range req.AlertIDs {
-		id, err := uuid.Parse(idStr)
-		if err == nil {
-			alertUUIDs = append(alertUUIDs, id)
+	for _, idStr := range params.AlertIDs {
+		alertUUID, err := uuid.Parse(idStr)
+		if err != nil {
+			log.Printf("Invalid alert ID: %s", idStr)
+			continue
 		}
+		alertUUIDs = append(alertUUIDs, alertUUID)
 	}
 
-	// Update all alerts owned by user
-	query := `
+	if len(alertUUIDs) == 0 {
+		return nil, fmt.Errorf("no valid alert IDs provided")
+	}
+
+	// Build update query
+	updateFields := "status = $2, updated_at = NOW()"
+	if params.Status == "acknowledged" {
+		updateFields += ", acknowledged_at = NOW()"
+	}
+	if params.Status == "resolved" {
+		updateFields += ", resolved_at = NOW()"
+	}
+
+	query := fmt.Sprintf(`
 		UPDATE alerts
-		SET status = $1, updated_at = $2
-		WHERE user_id = $3 AND id = ANY($4)
-	`
+		SET %s
+		WHERE user_id = $1 AND id = ANY($3)
+	`, updateFields)
 
-	result, err := h.bidStore.DB().ExecContext(ctx, query, req.Status, time.Now(), userUUID, alertUUIDs)
+	result, err := h.bidStore.DB().ExecContext(ctx, query, userID, params.Status, alertUUIDs)
 	if err != nil {
-		log.Printf("Failed to bulk update alerts: %v", err)
-		h.writeErrorResponse(w, "Failed to update alerts", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("failed to bulk update alerts: %w", err)
 	}
 
-	rowsAffected, _ := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rows affected: %w", err)
+	}
 
-	h.writeTRPCResponse(w, map[string]interface{}{
+	return map[string]interface{}{
 		"success":       true,
 		"message":       "Alerts updated successfully",
 		"updated_count": rowsAffected,
-	})
+	}, nil
+}
+
+// Helper function
+func joinStrings(strings []string, separator string) string {
+	result := ""
+	for i, s := range strings {
+		if i > 0 {
+			result += separator
+		}
+		result += s
+	}
+	return result
 }

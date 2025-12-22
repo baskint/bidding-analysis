@@ -126,20 +126,20 @@ func (h *Handler) SetupRoutes() http.Handler {
 	protected.HandleFunc("/mlModel.setDefault", h.setDefaultMLModel).Methods("POST")
 	protected.HandleFunc("/mlModel.getDefault", h.getDefaultMLModel).Methods("GET", "POST")
 
-	// Fraud Detection procedures
-	protected.HandleFunc("/fraud.getOverview", h.getFraudOverview).Methods("GET", "POST")
-	protected.HandleFunc("/fraud.getAlerts", h.getRealFraudAlerts).Methods("GET", "POST")
-	protected.HandleFunc("/fraud.updateAlert", h.updateFraudAlert).Methods("POST")
-	protected.HandleFunc("/fraud.getTrends", h.getFraudTrends).Methods("GET", "POST")
-	protected.HandleFunc("/fraud.getDeviceAnalysis", h.getDeviceFraudAnalysis).Methods("GET", "POST")
-	protected.HandleFunc("/fraud.getGeoAnalysis", h.getGeoFraudAnalysis).Methods("GET", "POST")
-	protected.HandleFunc("/fraud.createAlert", h.createFraudAlert).Methods("POST")
+	// Fraud procedures - Using WithAuth wrapper
+	protected.HandleFunc("/fraud.getOverview", h.WithAuth(h.getFraudOverview, &FraudOverviewRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/fraud.getAlerts", h.WithAuth(h.getRealFraudAlerts, &FraudAlertsRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/fraud.updateAlert", h.WithAuth(h.updateFraudAlert, &UpdateFraudAlertRequest{})).Methods("POST")
+	protected.HandleFunc("/fraud.getTrends", h.WithAuth(h.getFraudTrends, &FraudTrendsRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/fraud.getDeviceAnalysis", h.WithAuth(h.getDeviceFraudAnalysis, &DeviceFraudRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/fraud.getGeoAnalysis", h.WithAuth(h.getGeoFraudAnalysis, &GeoFraudRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/fraud.createAlert", h.WithAuth(h.createFraudAlert, &CreateFraudAlertRequest{})).Methods("POST")
 
-	// Alert procedures
-	protected.HandleFunc("/alerts.getAlerts", h.getAlerts).Methods("GET", "POST")
-	protected.HandleFunc("/alerts.getOverview", h.getAlertOverview).Methods("GET", "POST")
-	protected.HandleFunc("/alerts.updateStatus", h.updateAlertStatus).Methods("POST")
-	protected.HandleFunc("/alerts.bulkUpdate", h.bulkUpdateAlerts).Methods("POST")
+	// Alert procedures - Using WithAuth wrapper
+	protected.HandleFunc("/alerts.getAlerts", h.WithAuth(h.getAlerts, &GetAlertsRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/alerts.getOverview", h.WithAuth(h.getAlertOverview, &AlertOverviewRequest{})).Methods("GET", "POST")
+	protected.HandleFunc("/alerts.updateStatus", h.WithAuth(h.updateAlertStatus, &UpdateAlertStatusRequest{})).Methods("POST")
+	protected.HandleFunc("/alerts.bulkUpdate", h.WithAuth(h.bulkUpdateAlerts, &BulkUpdateAlertsRequest{})).Methods("POST")
 
 	// Settings procedures
 	protected.HandleFunc("/settings.get", h.GetUserSettings).Methods("GET", "POST")
