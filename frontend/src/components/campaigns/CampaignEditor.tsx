@@ -4,9 +4,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react"; // Added Loader2 icon for spinner
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { CampaignForm } from "@/components/campaigns/CampaignForm";
-import { getCampaign, Campaign } from "@/lib/api/campaigns";
+import { getCampaign } from "@/lib/api/campaigns";
+import type { Campaign } from "@/lib/types";
 
 // We only need the ID, which will be passed from the Server Component
 interface CampaignEditorProps {
@@ -21,6 +22,7 @@ export function CampaignEditor({ campaignId }: CampaignEditorProps) {
 
   useEffect(() => {
     const loadCampaign = async () => {
+      console.log('[DEBUG] Loading campaign with ID:', campaignId);
       try {
         setLoading(true);
         const data = await getCampaign(campaignId);

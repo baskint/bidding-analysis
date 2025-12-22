@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   createCampaign,
   updateCampaign,
-  Campaign,
   CreateCampaignInput,
   UpdateCampaignInput,
 } from "@/lib/api/campaigns";
+import type { Campaign } from "@/lib/types";
 
 interface CampaignFormProps {
   initialCampaign?: Campaign;
@@ -102,7 +102,7 @@ export function CampaignForm({ initialCampaign, mode }: CampaignFormProps) {
             : undefined,
         };
         await updateCampaign(data);
-        router.push(`/dashboard/campaigns/edit?id= ${initialCampaign?.id}`);
+        router.push(`/dashboard/campaigns/edit?id=${initialCampaign?.id}`);
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error
