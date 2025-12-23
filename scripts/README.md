@@ -25,3 +25,9 @@ npx tsc
 # Run the compiled JavaScript
 node dist/generate-test-data.js
 ```
+
+npm install -D typescript ts-node @types/node
+
+npx ts-node generate-test-data.ts 1000
+
+npx ts-node bid-simulator.ts
