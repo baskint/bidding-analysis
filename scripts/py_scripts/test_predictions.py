@@ -17,7 +17,7 @@ print("✅ Model loaded!")
 # Load encoders
 print("\n[2/3] Loading encoders...")
 with open("models/bid_optimizer_latest_encoders.json", "r") as f:
-    encoders = json.load(f)
+  encoders = json.load(f)
 print("✅ Encoders loaded")
 
 # Test prediction
