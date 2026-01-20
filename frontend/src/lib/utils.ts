@@ -47,6 +47,7 @@ export async function apiGet<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'GET',
     headers: getAuthHeaders(),
+    credentials: 'include', // 👈 ADDED FOR FIREFOX CORS
   });
   return handleApiResponse<T>(response);
 }
@@ -58,6 +59,7 @@ export async function apiPost<T>(endpoint: string, body?: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'POST',
     headers: getAuthHeaders(),
+    credentials: 'include', // 👈 ADDED FOR FIREFOX CORS
     body: body ? JSON.stringify(body) : undefined,
   });
   return handleApiResponse<T>(response);
@@ -70,6 +72,7 @@ export async function apiPut<T>(endpoint: string, body?: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
+    credentials: 'include', // 👈 ADDED FOR FIREFOX CORS
     body: body ? JSON.stringify(body) : undefined,
   });
   return handleApiResponse<T>(response);
@@ -82,6 +85,7 @@ export async function apiDelete<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
+    credentials: 'include', // 👈 ADDED FOR FIREFOX CORS
   });
   return handleApiResponse<T>(response);
 }

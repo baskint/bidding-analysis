@@ -1,4 +1,14 @@
-flask==3.0.0
-xgboost==2.1.2
-numpy==1.26.4
-gunicorn==21.2.0
+# Web
+flask>=3.0,<4.0
+
+# WSGI (Windows-compatible)
+waitress>=2.1.2
+
+# Numerical / ML
+numpy>=2.0
+xgboost>=2.1
+
+# Build tooling (CRITICAL for new Python versions)
+pip>=24.3
+setuptools>=70.0
+wheel>=0.43.0

@@ -1,1 +1,22 @@
-../models/bid_optimizer_latest_encoders.json
+{
+  "device_type": {
+    "desktop": 6698,
+    "mobile": 6664,
+    "tablet": 6638
+  },
+  "segment_category": {
+    "new_user": 5061,
+    "premium": 5006,
+    "value": 4994,
+    "standard": 4939
+  },
+  "country": {
+    "US": 8053,
+    "GB": 3948,
+    "CA": 3018,
+    "AU": 1935,
+    "JP": 1063,
+    "DE": 999,
+    "FR": 984
+  }
+}

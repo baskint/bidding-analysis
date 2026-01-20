@@ -46,8 +46,21 @@ func loggingMiddleware(next http.Handler) http.Handler {
 }
 
 // authMiddleware validates JWT tokens and adds user info to request context
+// authMiddleware validates JWT tokens and adds user info to request context
 func (h *Handler) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// IMPORTANT: Set CORS headers BEFORE any error responses
+		origin := r.Header.Get("Origin")
+		allowedOrigins := map[string]bool{
+			"https://bidding-analysis.web.app":         true,
+			"https://bidding-analysis.firebaseapp.com": true,
+			"http://localhost:3006":                    true,
+		}
+		if allowedOrigins[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			http.Error(w, "Authorization header required", http.StatusUnauthorized)
@@ -80,10 +93,8 @@ func (h *Handler) authMiddleware(next http.Handler) http.Handler {
 
 		// Add user info to context
 		ctx := r.Context()
-		// *** CRITICAL FIX: Use the exported constants ***
 		ctx = context.WithValue(ctx, ContextKeyUserID, claims.UserID)
 		ctx = context.WithValue(ctx, ContextKeyUsername, claims.Username)
-		// *** END CRITICAL FIX ***
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

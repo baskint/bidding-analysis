@@ -55,6 +55,7 @@ func (h *Handler) SetupRoutes() http.Handler {
 	router := mux.NewRouter()
 
 	// Apply middleware
+	router.Use(corsMiddleware)
 	router.Use(loggingMiddleware)
 
 	// Health check
