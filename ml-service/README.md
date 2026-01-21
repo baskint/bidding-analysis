@@ -5,6 +5,8 @@
 python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
+
+pyton ml_service.py
 ```
 
 ### Commandws - Linux
@@ -56,3 +58,5 @@ curl -X POST http://localhost:5000/predict \
 ❯ py -3.12 -m venv .venv
 ❯ .venv\Scripts\activate
 ❯ py -3.12 .\ml_service.py
+
+brew install libom
