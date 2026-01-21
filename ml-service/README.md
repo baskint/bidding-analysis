@@ -50,3 +50,9 @@ curl -X POST http://localhost:5000/predict \
   }'
 
   autopep8
+
+# debugging on windows
+
+❯ py -3.12 -m venv .venv
+❯ .venv\Scripts\activate
+❯ py -3.12 .\ml_service.py

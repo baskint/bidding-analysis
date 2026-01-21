@@ -153,7 +153,7 @@ export default function CampaignsPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Campaigns</h1>
             <p className="text-gray-600 mt-1">
-              Manage your advertising campaigns
+              Manage advertising campaigns
             </p>
           </div>
           <Link
