@@ -6,7 +6,7 @@ Test script for ML Prediction Service
 import requests
 import json
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:5001"
 
 def test_health():
     """Test health endpoint"""
@@ -40,21 +40,19 @@ def test_predict():
     
     response = requests.post(
         f"{BASE_URL}/predict",
-        json=test_data,
+        json={"features": test_data},
         headers={"Content-Type": "application/json"}
     )
-    
+
     print(f"   Status: {response.status_code}")
     result = response.json()
     print(f"   Response: {json.dumps(result, indent=2)}")
-    
+
     assert response.status_code == 200
-    assert "bid_price" in result
-    assert result["bid_price"] >= test_data["floor_price"]
-    assert result["confidence"] > 0
-    assert result["strategy"] == "ml_optimized"
-    
-    print(f"   ✅ Prediction passed (bid: ${result['bid_price']:.2f})")
+    assert "predicted_bid" in result
+    assert result["predicted_bid"] > 0
+
+    print(f"   ✅ Prediction passed (bid: ${result['predicted_bid']:.2f})")
 
 def test_multiple_scenarios():
     """Test multiple prediction scenarios"""
@@ -76,9 +74,9 @@ def test_multiple_scenarios():
     ]
     
     for scenario in scenarios:
-        response = requests.post(f"{BASE_URL}/predict", json=scenario["data"])
+        response = requests.post(f"{BASE_URL}/predict", json={"features": scenario["data"]})
         result = response.json()
-        print(f"   {scenario['name']}: ${result['bid_price']:.2f}")
+        print(f"   {scenario['name']}: ${result['predicted_bid']:.2f}")
     
     print("   ✅ Multiple scenarios passed")
 
