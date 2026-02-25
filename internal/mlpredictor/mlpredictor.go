@@ -62,7 +62,7 @@ func NewBidPredictorHTTP(serviceURL string) (Predictor, error) {
 	}
 
 	// Check if service is available
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := p.healthCheck(ctx); err != nil {
