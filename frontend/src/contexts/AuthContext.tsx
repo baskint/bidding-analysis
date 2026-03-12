@@ -75,8 +75,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check for stored JWT token (Go backend auth)
     const token = localStorage.getItem("auth_token");
     if (token) {
-      console.log("AuthProvider: Found JWT token, verifying with Go backend");
+      const storedUser = localStorage.getItem("user");
 
+      // Immediately hydrate from localStorage to avoid redirect flicker
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          setUser({
+            id: parsed.id,
+            username: parsed.username,
+            authProvider: "local",
+            created_at: parsed.created_at,
+          });
+          setLoading(false);
+          console.log("AuthProvider: Hydrated user from localStorage");
+        } catch {
+          // Invalid stored user, fall through to verification
+        }
+      }
+
+      // Verify token with backend in background
+      console.log("AuthProvider: Found JWT token, verifying with Go backend");
       getCurrentUser()
         .then((response) => {
           setUser({
@@ -86,12 +105,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             created_at: response.user.created_at,
           });
           console.log("AuthProvider: JWT token verified, user authenticated");
-          setLoading(false);
         })
         .catch(() => {
           console.log("AuthProvider: JWT token invalid, clearing auth");
           localStorage.removeItem("auth_token");
           localStorage.removeItem("user");
+          setUser(null);
+        })
+        .finally(() => {
           setLoading(false);
         });
     } else {
@@ -111,15 +132,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             email: firebaseUser.email || undefined,
             authProvider: "google",
           });
+          setLoading(false);
         } else if (!firebaseUser && !token) {
           // No auth from either source
           console.log("AuthProvider: No authentication found");
           setUser(null);
+          setLoading(false);
         }
-        setLoading(false);
       },
-      (authError) => {
+      async (authError) => {
         console.error("AuthProvider: Firebase auth error:", authError);
+        // Clear corrupted Firebase auth state to prevent redirect loops
+        try {
+          await firebaseSignOut(auth);
+        } catch (e) {
+          console.error("AuthProvider: Failed to clear Firebase auth state:", e);
+        }
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("user");
+        setUser(null);
         setLoading(false);
       }
     );

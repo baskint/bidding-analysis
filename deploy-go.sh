@@ -24,7 +24,7 @@ fi
 
 # Build and push Docker image
 echo "Building Go service Docker image..."
-docker build -t gcr.io/${PROJECT_ID}/bidding-analysis:latest .
+docker build --platform "${DOCKER_PLATFORM:-linux/amd64}" -t gcr.io/${PROJECT_ID}/bidding-analysis:latest .
 docker push gcr.io/${PROJECT_ID}/bidding-analysis:latest
 
 # Create temporary env file with all required variables
